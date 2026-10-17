@@ -1,0 +1,8 @@
+uagents>=0.25.5
+openai
+httpx
+python-dotenv
+sentry-sdk
+stripe
+resend
+ics
