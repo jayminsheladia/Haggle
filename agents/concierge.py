@@ -850,7 +850,11 @@ async def send_carousel(ctx: Context, user: str, s: dict, narration: str) -> Non
     ))
 
 
+MAX_LABEL = 18  # ASI:One sizes the label column to its longest label: long labels crush the values
+
+
 def detail_rows(s: dict, vid: str) -> list[tuple[str, str]]:
+    """Detail card rows: short labels on the left, the detail (which can wrap) on the right."""
     q, v = s["quotes"][vid], _vendor(s, vid)
     if on_request(q):
         rows = [("Price", "not published: request a quote")]
@@ -859,9 +863,10 @@ def detail_rows(s: dict, vid: str) -> list[tuple[str, str]]:
     if q["delivery_fee_usd"]:
         rows.append(("Delivery fee", usd(q["delivery_fee_usd"])))
     for item in q["items"]:
-        label = "Standard" if item["group"] == "standard" else item["group"].replace("_", "-").capitalize()
-        rows.append((f"{label} · {item['package']}",
-                     f"{item['headcount']} × {usd(item['per_head_usd'])} = {usd(item['subtotal_usd'])}"))
+        group = "Standard" if item["group"] == "standard" else item["group"].replace("_", "-").capitalize()
+        rows.append((f"{group} ({item['headcount']})",
+                     f"{usd(item['subtotal_usd'])} · {usd(item['per_head_usd'])}/person"))
+        rows.append(("Includes", item["package"]))
     if v.get("rating") is not None:
         rows.append(("Rating", f"★ {v['rating']} ({v.get('rating_count') or 0} reviews)"))
     if v.get("source") == "places":
@@ -871,15 +876,14 @@ def detail_rows(s: dict, vid: str) -> list[tuple[str, str]]:
     for speaker, said in s.get("negolog", {}).get(vid, []):
         rows.append((f"💬 {speaker}", said))
     for line in q.get("menu_preview", []):
-        name, _, price = line.partition(" — ")
-        rows.append((f"Menu · {name}", price or "on the menu"))
+        rows.append(("Menu", line))
     if q.get("menu_url"):
         rows.append(("Full menu", q["menu_url"]))
     rows.append(("Status", "Price on request" if on_request(q) else "Estimate · not confirmed" if q["estimate"]
                  else "Waiting on owner approval" if q["status"] == "needs_approval" else "Confirmed quote"))
     if q["note"]:
         rows.append(("Note", q["note"]))
-    return rows
+    return [(label if len(label) <= MAX_LABEL else label[:MAX_LABEL - 1] + "…", value) for label, value in rows]
 
 
 async def quote_action(ctx: Context, user: str, s: dict, action: str, sel: dict, text: str) -> None:
