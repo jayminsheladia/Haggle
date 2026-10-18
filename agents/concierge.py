@@ -491,6 +491,21 @@ def merge_vendors(entries: list[dict]) -> list[dict]:
     return list(merged.values())
 
 
+VENDOR_DATA_DIR = Path(__file__).resolve().parents[1] / "vendors" / "data"
+
+
+def has_no_prices(vendor_id: str) -> bool:
+    """True when the vendor's menu was already read and had no public prices (the vendor could only answer
+    "price on request"). Vendors not read yet stay in the list: the Factory may still find prices."""
+    path = VENDOR_DATA_DIR / f"{vendor_id}.json"
+    if not path.is_file():
+        return False
+    try:
+        return json.loads(path.read_text()).get("extraction_status") != "extracted"
+    except (OSError, ValueError):
+        return False
+
+
 async def send_picker(ctx: Context, user: str, s: dict) -> None:
     vendors = s["vendors"]
     live = sum(v["live"] for v in vendors)
@@ -574,6 +589,10 @@ async def on_discovery_result(ctx: Context, sender: str, result: DiscoveryResult
 
     s["location"] = {"resolved": result.resolved_location, "lat": result.lat, "lng": result.lng}
     vendors = merge_vendors([vendor_entry(v) for v in result.vendors])
+    hidden = [v["display_name"] for v in vendors if has_no_prices(v["vendor_id"])]
+    if hidden:  # don't offer caterers that can't quote: their menus have no public prices
+        vendors = [v for v in vendors if not has_no_prices(v["vendor_id"])]
+        ctx.logger.info(f"[{result.rfq_id}] hiding {len(hidden)} caterers without public prices: {hidden}")
     s["vendors"] = vendors
     s["stage"] = "picking"
     ctx.storage.set(user, s)
