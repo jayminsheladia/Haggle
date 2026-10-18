@@ -1,0 +1,332 @@
+{
+  "name": "Good Heart Catering",
+  "slug": "good-heart-catering",
+  "source_url": "https://goodheartcatering.com/shop.goodheartcatering.com",
+  "place_id": "ChIJkaU63XXHwoARGiWfAtQ6nWM",
+  "phone": "(323) 505-6383",
+  "email": "",
+  "address": "3200 Wilshire Blvd #105, Los Angeles, CA 90010, USA",
+  "lat": null,
+  "lng": null,
+  "items": [
+    {
+      "name": "Crafted Sandwich Tray",
+      "price_per_person": 13.0,
+      "description": "Curated selection of signature handcrafted sandwiches. Choose 5 or 10 gourmet creations—from the classic California Club to the savory Curry Chicken Ciabatta. Each sandwich is prepared with premium proteins and fresh ingredients.",
+      "dietary_tags": [
+        "vegetarian"
+      ],
+      "serves": 5
+    },
+    {
+      "name": "Wrap Tray",
+      "price_per_person": 13.0,
+      "description": "Assorted wrap tray featuring ten signature wraps with beef, chicken, turkey, and vegetarian options. Choose the small tray for five wraps or the large tray for ten wraps.",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Mini Croissant Sandwich Tray",
+      "price_per_person": 10.0,
+      "description": "Mini croissant sandwiches served on fresh, buttery croissants with your choice of protein on each. Includes 6 gourmet sandwiches, fresh fruit, and napkins for easy serving.",
+      "dietary_tags": [],
+      "serves": 4
+    },
+    {
+      "name": "Mini Slider Sandwich Platter",
+      "price_per_person": null,
+      "description": "Twelve mini breakfast sliders loaded with fluffy eggs and melted cheddar on golden buns. Customize each slider with your choice of bacon, ham, turkey, or avocado.",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Pinwheel Platter (Regular)",
+      "price_per_person": 9.0,
+      "description": "Colorful assortment of signature wraps. This platter includes Mozzarella & Tomato, Chicken Caesar, Chipotle All-Star, and Cranberry Tuna wraps—two of each variety. Comes ready to serve on a tray with serving utensils.",
+      "dietary_tags": [],
+      "serves": 10
+    },
+    {
+      "name": "Chimichurri Beef Skewers",
+      "price_per_person": 11.87,
+      "description": "Premium marinated beef skewers grilled with fresh bell peppers, onions, and herbs. Complete catering tray with side salad, pita bread, serving utensils, and chimichurri sauce served on the side for dipping.",
+      "dietary_tags": [],
+      "serves": 8
+    },
+    {
+      "name": "La Paz Grilled Shrimp Skewers",
+      "price_per_person": 16.0,
+      "description": "Grilled shrimp skewers seasoned with paprika, fresh citrus, and cilantro, served on a catering tray with cilantro-ranch dressing for dipping.",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Thai Sweet Chili Chicken Skewers",
+      "price_per_person": 7.0,
+      "description": "Fire-grilled chicken skewers glazed in tangy Thai sweet chili sauce, served on an elegant tray with fresh greens, roasted red peppers, and warm Arabic pita bread.",
+      "dietary_tags": [],
+      "serves": 10
+    },
+    {
+      "name": "Tofu Skewers",
+      "price_per_person": 69.99,
+      "description": "Grilled tofu skewers layered with fresh seasonal vegetables including Italian squash, yellow onion, green bell pepper, and grape tomatoes. Seasoned with paprika, oregano, and curry powder, then drizzled with pure sesame oil.",
+      "dietary_tags": [
+        "vegan",
+        "vegetarian"
+      ],
+      "serves": 1
+    },
+    {
+      "name": "Cocktail Hour Shrimp Platter",
+      "price_per_person": 6.25,
+      "description": "Fresh, chilled jumbo shrimp on skewers, perfectly seasoned and served over crisp romaine with fresh lemon wedges. Complete with elegant black catering tray, utensils, and serving lid.",
+      "dietary_tags": [],
+      "serves": 8
+    },
+    {
+      "name": "Mediterranean Hummus Tray",
+      "price_per_person": 4.5,
+      "description": "Vibrant Mediterranean dip with roasted red peppers, fresh parsley, and warm Arabic pita bread.",
+      "dietary_tags": [
+        "vegetarian"
+      ],
+      "serves": 10
+    },
+    {
+      "name": "Zorba Wrap Platter",
+      "price_per_person": 32.99,
+      "description": "Mediterranean platter with tender dolmades, creamy yogurt, fresh herbs, and fire-roasted red peppers.",
+      "dietary_tags": [
+        "vegetarian"
+      ],
+      "serves": 2
+    },
+    {
+      "name": "The Ritz Tray",
+      "price_per_person": 10.0,
+      "description": "Assortment of premium cheeses—creamy James Farm cream cheese, sharp Cheddar, and zesty Pepper Jack—arranged on a tray with crispy crackers.",
+      "dietary_tags": [
+        "contains-dairy",
+        "vegetarian"
+      ],
+      "serves": 5
+    },
+    {
+      "name": "Vince's Pesto Fettuccine w Chicken Combo",
+      "price_per_person": 14.0,
+      "description": "Tender chicken breast and fresh basil pesto coat fettuccine, paired with special garlic bread.",
+      "dietary_tags": [],
+      "serves": 10
+    },
+    {
+      "name": "Crusted Salmon and Spinach Combo",
+      "price_per_person": 26.67,
+      "description": "Baked salmon with a flavorful sweet and mildly spicy crust, served over fresh spinach. Includes 10 salmon steaks, brown rice, and bread rolls.",
+      "dietary_tags": [],
+      "serves": 6
+    },
+    {
+      "name": "Sweet Chili Chicken Skewer Combo",
+      "price_per_person": 22.2,
+      "description": "Thai-inspired grilled chicken skewers with 20 skewers, fresh pita quarters, fluffy white rice, and house-made sweet Thai chili sauce.",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Chimichurri Beef Skewer Combo",
+      "price_per_person": 26.0,
+      "description": "20 tender halal-certified beef skewers marinated in signature recipe and grilled to perfection. Served with buttered white rice, crispy grilled cherry tomatoes, pita bread quarters, and housemade chimichurri sauce.",
+      "dietary_tags": [
+        "halal"
+      ],
+      "serves": 5
+    },
+    {
+      "name": "Mozzarella Crisps",
+      "price_per_person": 5.5,
+      "description": "Fresh mozzarella slices, basil, and tomato topped with fresh ground pepper, served with crispy toasted garlic bread and aged balsamic vinegar.",
+      "dietary_tags": [
+        "contains-dairy",
+        "vegetarian"
+      ],
+      "serves": 10
+    },
+    {
+      "name": "La Mar Shrimp Ceviche",
+      "price_per_person": 10.0,
+      "description": "Marinated shrimp in signature La Mar ceviche—a light, tangy blend with mildly spicy herbs and citrus notes. Served in a 48 oz bowl with crispy tortilla chips.",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Salad Builder Bar Buffet",
+      "price_per_person": 13.5,
+      "description": "Build-your-own salad bar with mushrooms, bell peppers, cucumbers, cherry tomatoes, onions, kalamata olives, chicken, bacon, walnuts, sun-dried tomatoes, goat cheese, and feta cheese. Served with two house dressings and fresh garlic toast.",
+      "dietary_tags": [],
+      "serves": 10
+    },
+    {
+      "name": "Guac and Gallo",
+      "price_per_person": 4.6,
+      "description": "Hand-made guacamole with signature house-blend pico de gallo. Served with crispy tortilla chips.",
+      "dietary_tags": [
+        "vegetarian"
+      ],
+      "serves": 10
+    },
+    {
+      "name": "Fresh Garden Vegetable Tray",
+      "price_per_person": 9.2,
+      "description": "Fresh seasonal vegetables including tomatoes, cucumbers, bell peppers, carrots, broccoli, celery, and cauliflower, served with creamy buttermilk ranch dip.",
+      "dietary_tags": [
+        "vegetarian"
+      ],
+      "serves": 5
+    },
+    {
+      "name": "Summer Field Salad",
+      "price_per_person": 9.4,
+      "description": "Fresh strawberries and candied walnuts tossed with creamy imported feta cheese over organic spring mix, finished with a tangy raspberry walnut dressing served on the side.",
+      "dietary_tags": [
+        "vegetarian"
+      ],
+      "serves": 5
+    },
+    {
+      "name": "The Grazer Salad",
+      "price_per_person": 9.4,
+      "description": "Fresh mixed greens, crisp apple slices, cherry tomatoes, dried cranberries, and sunflower seeds with raspberry dressing served on the side.",
+      "dietary_tags": [
+        "vegetarian"
+      ],
+      "serves": 5
+    },
+    {
+      "name": "Garden Variety Salad",
+      "price_per_person": 9.0,
+      "description": "Fresh garden salad made with organic spring mix, cherry tomatoes, cucumbers, tri-colored bell peppers, red onions, and kalamata olives. Balsamic dressing served on the side.",
+      "dietary_tags": [
+        "vegetarian"
+      ],
+      "serves": 5
+    },
+    {
+      "name": "Caesar Salad",
+      "price_per_person": 9.0,
+      "description": "Classic Caesar salad with romaine lettuce, shredded Parmesan, and seasoned croutons tossed in Caesar dressing.",
+      "dietary_tags": [
+        "vegetarian"
+      ],
+      "serves": 5
+    },
+    {
+      "name": "Couscous Salad",
+      "price_per_person": 9.4,
+      "description": "Mediterranean couscous salad made with pearl couscous, cherry tomatoes, Persian cucumbers, tri-colored bell peppers, dried mint, and a house-made lemon and olive oil dressing.",
+      "dietary_tags": [
+        "vegetarian"
+      ],
+      "serves": 5
+    },
+    {
+      "name": "Red Quinoa Salad",
+      "price_per_person": 9.0,
+      "description": "Fresh gluten-free Red Quinoa Salad with crisp cucumbers, ripe tomatoes, fragrant mint, and sweet onions in a light lemon and oil dressing.",
+      "dietary_tags": [
+        "gluten-free",
+        "vegetarian"
+      ],
+      "serves": 5
+    },
+    {
+      "name": "Mom's Pasta Salad",
+      "price_per_person": 9.0,
+      "description": "Homemade pasta salad made with penne, fresh garden vegetables (cucumber, tomato, bell pepper), Kalamata olives, and signature zesty lemon and herb dressing.",
+      "dietary_tags": [
+        "vegetarian"
+      ],
+      "serves": 5
+    },
+    {
+      "name": "Good Heart Special",
+      "price_per_person": 9.0,
+      "description": "Mix of baby mixed greens, crunchy semi-sweet apples, oranges, and creamy Feta cheese with balsamic or raspberry vinaigrette served on the side.",
+      "dietary_tags": [
+        "vegetarian"
+      ],
+      "serves": 5
+    },
+    {
+      "name": "Bread Rolls",
+      "price_per_person": null,
+      "description": null,
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "White Rice",
+      "price_per_person": 24.99,
+      "description": "Fluffy, perfectly cooked long grain white rice with a touch of butter. A classic side that pairs beautifully with any entrée.",
+      "dietary_tags": [
+        "vegetarian"
+      ],
+      "serves": 1
+    },
+    {
+      "name": "Additional Beef Skewers",
+      "price_per_person": null,
+      "description": "20 Additional Beef Skewers",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Bag of Chips",
+      "price_per_person": null,
+      "description": "One bag of chips",
+      "dietary_tags": [],
+      "serves": 1
+    },
+    {
+      "name": "Breakfast Burrito Tray",
+      "price_per_person": 12.0,
+      "description": "Customizable flour tortillas packed with scrambled eggs, melted mozzarella, sautéed peppers and onions, fresh cilantro, and tomatoes. Choose your protein (Ham, Bacon, or Turkey) or Vegetarian Tofu Scramble. Available in Small (5 burritos) or Large (10 burritos).",
+      "dietary_tags": [
+        "vegetarian"
+      ],
+      "serves": 5
+    },
+    {
+      "name": "Bagel Egg Sandwich Tray",
+      "price_per_person": 12.0,
+      "description": "Bagel egg sandwiches with fried egg and melted cheddar on toasted plain bagels, arranged on a serving tray. Small tray for five sandwiches or large tray for ten.",
+      "dietary_tags": [
+        "vegetarian"
+      ],
+      "serves": 5
+    },
+    {
+      "name": "Morning Special Tray",
+      "price_per_person": null,
+      "description": null,
+      "dietary_tags": [],
+      "serves": null
+    }
+  ],
+  "claimed": false,
+  "owner_contact": null,
+  "rules": {
+    "floor_discount_pct": 12.0,
+    "min_headcount": 10,
+    "max_headcount": 200,
+    "lead_time_hours": 48,
+    "delivery_radius_mi": 10.0,
+    "blackout_dates": [],
+    "auto_approve_limit_usd": 2000.0,
+    "delivery_fee_usd": 0.0
+  },
+  "extraction_status": "extracted",
+  "extracted_at": "2026-10-18T18:05:42.993450+00:00",
+  "rating": null,
+  "photo_url": "https://lh3.googleusercontent.com/grass-cs/AABkmLcqVbcJpm5DgV_V81jX2aPUg_LqnLdoNIW18WtXJsQtsVN1b3AqxH-ld03NgR8e64nKNLd_E8Lreqh23CxclPTjc8Mq_2g98iGWrsGVHudtxn5cyA-8UQEt6Q0cEMm16xjnNS540w=s4800-w800"
+}
