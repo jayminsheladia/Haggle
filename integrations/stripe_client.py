@@ -48,9 +48,8 @@ def create_deposit_checkout(*, rfq_id: str, vendor_id: str, vendor_name: str, am
     return_url = (os.getenv("STRIPE_SUCCESS_URL", "https://asi1.ai")
                   + f"?session_id={{CHECKOUT_SESSION_ID}}&rfq_id={rfq_id}")
     session = s.checkout.Session.create(
-        ui_mode="embedded",
-        redirect_on_completion="if_required",
-        payment_method_types=["card"],
+        ui_mode="embedded_page",  # Stripe's current name for "embedded"; metadata below keeps ASI:One's "embedded"
+        redirect_on_completion="if_required",  # payment methods come from the Stripe Dashboard settings
         mode="payment",
         return_url=return_url,
         expires_at=int(time.time()) + EXPIRES_S,
