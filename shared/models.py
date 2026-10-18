@@ -52,6 +52,8 @@ class Quote(Model):
     dietary_ok: bool = True  # every dietary group and allergy can be served
     conflicts: List[str] = []  # what can't be served, e.g. "no halal items"
     expires_in_s: int = 0  # 0 = no expiry given
+    menu_preview: List[str] = []  # a few menu items with prices, for the quote's detail card
+    menu_url: str = ""  # the public menu page the prices come from
     trace: str = ""
 
 

@@ -1,0 +1,102 @@
+{
+  "name": "Green Fork Kitchen (demo)",
+  "slug": "demo-green-fork",
+  "source_url": "",
+  "place_id": "",
+  "phone": "",
+  "email": "",
+  "address": "Santa Monica, CA",
+  "lat": null,
+  "lng": null,
+  "items": [
+    {
+      "name": "Grilled Chicken Bowl",
+      "price_per_person": 16.0,
+      "description": null,
+      "dietary_tags": [
+        "gluten-free",
+        "halal"
+      ],
+      "serves": null
+    },
+    {
+      "name": "Salmon Bowl",
+      "price_per_person": 19.5,
+      "description": null,
+      "dietary_tags": [
+        "gluten-free"
+      ],
+      "serves": null
+    },
+    {
+      "name": "Tofu Power Bowl",
+      "price_per_person": 15.0,
+      "description": null,
+      "dietary_tags": [
+        "vegan",
+        "vegetarian",
+        "gluten-free"
+      ],
+      "serves": null
+    },
+    {
+      "name": "Veggie Wrap",
+      "price_per_person": 13.0,
+      "description": null,
+      "dietary_tags": [
+        "vegetarian",
+        "contains-dairy"
+      ],
+      "serves": null
+    },
+    {
+      "name": "Quinoa Salad",
+      "price_per_person": 14.0,
+      "description": null,
+      "dietary_tags": [
+        "vegan",
+        "vegetarian",
+        "gluten-free",
+        "contains-nuts"
+      ],
+      "serves": null
+    },
+    {
+      "name": "Cold-pressed Juice",
+      "price_per_person": 4.5,
+      "description": null,
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Oat Cookies",
+      "price_per_person": 3.0,
+      "description": null,
+      "dietary_tags": [
+        "vegan"
+      ],
+      "serves": null
+    },
+    {
+      "name": "Compostable plates and utensils",
+      "price_per_person": 0.75,
+      "description": null,
+      "dietary_tags": [],
+      "serves": null
+    }
+  ],
+  "claimed": true,
+  "owner_contact": null,
+  "rules": {
+    "floor_discount_pct": 15.0,
+    "min_headcount": 10,
+    "max_headcount": 100,
+    "lead_time_hours": 48,
+    "delivery_radius_mi": 8.0,
+    "blackout_dates": [],
+    "auto_approve_limit_usd": 1200.0,
+    "delivery_fee_usd": 30.0
+  },
+  "extraction_status": "extracted",
+  "rating": null
+}

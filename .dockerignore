@@ -1,0 +1,11 @@
+.env
+.venv/
+venv/
+__pycache__/
+*.pyc
+.git/
+.DS_Store
+agent*_data.json
+vendors/readme/
+vendors/addresses.json
+docs/build-plan.docx

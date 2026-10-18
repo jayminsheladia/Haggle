@@ -8,12 +8,106 @@
   "address": "1776 Westwood Blvd, Los Angeles, CA 90024",
   "lat": null,
   "lng": null,
-  "items": [],
+  "items": [
+    {
+      "name": "Wrap Combo",
+      "price_per_person": 19.95,
+      "description": "A wrap (chicken shawarma, beef shawarma, chicken kebab or falafel) and a side",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Veggie Combo",
+      "price_per_person": 22.0,
+      "description": "Dip, salad, falafel, fried cauliflower, rice, pickles, tahini, hot sauce, pita",
+      "dietary_tags": [
+        "vegetarian"
+      ],
+      "serves": null
+    },
+    {
+      "name": "Deluxe Combo",
+      "price_per_person": 24.5,
+      "description": "Dip, salad, falafel, chicken kebab, rice, pickles, garlic, tahini, hot sauce, pita",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Best Seller",
+      "price_per_person": 26.95,
+      "description": "Dip, salad, falafel, fried cauliflower, chicken kebab, beef kefta, rice, pickles, garlic, tahini, pita",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Chef's Favorite",
+      "price_per_person": 31.95,
+      "description": "Everything in Best Seller plus pastry and baklawa",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Hummus",
+      "price_per_person": null,
+      "description": "Tray: small $48 (serves 12-15), medium $68 (16-30), large $92 (31-40)",
+      "dietary_tags": [],
+      "serves": 12
+    },
+    {
+      "name": "Babaganouj",
+      "price_per_person": null,
+      "description": "Tray: small $51 (serves 12-15), medium $70 (16-30), large $94 (31-40)",
+      "dietary_tags": [],
+      "serves": 12
+    },
+    {
+      "name": "Fried Cauliflower",
+      "price_per_person": null,
+      "description": "Tray: small $60 (serves 12-15), medium $76 (16-30), large $108 (31-40)",
+      "dietary_tags": [],
+      "serves": 12
+    },
+    {
+      "name": "Tabouleh",
+      "price_per_person": null,
+      "description": "Tray: small $70 (serves 12-15), medium $110 (16-30), large $155 (31-40)",
+      "dietary_tags": [],
+      "serves": 12
+    },
+    {
+      "name": "Fattoush",
+      "price_per_person": null,
+      "description": "Tray: small $68 (serves 12-15), medium $108 (16-30), large $152 (31-40)",
+      "dietary_tags": [],
+      "serves": 12
+    },
+    {
+      "name": "Rice",
+      "price_per_person": null,
+      "description": "Tray: small $45 (serves 12-15), medium $60 (16-30), large $85 (31-40)",
+      "dietary_tags": [],
+      "serves": 12
+    },
+    {
+      "name": "Baklawa (dozen)",
+      "price_per_person": null,
+      "description": "$45 per dozen",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Plates, utensils and napkins",
+      "price_per_person": 1.5,
+      "description": null,
+      "dietary_tags": [],
+      "serves": null
+    }
+  ],
   "claimed": false,
   "owner_contact": null,
   "rules": {
     "floor_discount_pct": 12.0,
-    "min_headcount": 10,
+    "min_headcount": 15,
     "max_headcount": 200,
     "lead_time_hours": 48,
     "delivery_radius_mi": 10.0,
@@ -21,7 +115,7 @@
     "auto_approve_limit_usd": 2000.0,
     "delivery_fee_usd": 0.0
   },
-  "extraction_status": "estimated",
-  "extracted_at": "2026-10-18T02:10:03.898381+00:00",
+  "extraction_status": "extracted",
+  "extracted_at": "2026-10-18T03:19:54.987791+00:00",
   "rating": null
 }

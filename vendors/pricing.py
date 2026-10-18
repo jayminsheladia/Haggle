@@ -15,10 +15,6 @@ from shared.models import RFQ, LineItem
 
 LA = ZoneInfo("America/Los_Angeles")
 
-# For "estimated" menus (no usable prices on the public page): the build plan's fallback of an average
-# LA catering price per person. Quotes built from it are always labeled estimates.
-ESTIMATE_PER_HEAD_USD = 20.0
-
 # RFQ dietary keys -> menu tags that satisfy them.
 DIET_TAGS = {
     "vegetarian": {"vegetarian", "vegan"},
@@ -61,7 +57,8 @@ def price_for(menu: VendorMenu, rfq: RFQ) -> tuple[float, list[LineItem], bool, 
     the menu items that fit it; extras only if the menu lists them; plus the delivery fee.
     """
     conflicts: list[str] = []
-    estimated = not menu.priced_items
+    if not menu.priced_items:
+        return 0.0, [], False, ["no public menu prices"]  # never invent a price
     mains = [i for i in menu.priced_items if not _is_extra(i)]
 
     # Allergies: drop items the menu marks as containing them; flag allergens the menu can't tell us about.
@@ -82,16 +79,11 @@ def price_for(menu: VendorMenu, rfq: RFQ) -> tuple[float, list[LineItem], bool, 
 
     lines: list[LineItem] = []
     for group, n in groups.items():
-        if estimated:
-            if group != "standard":
-                conflicts.append(f"{_label(group)} options not confirmed")
-            per, package = ESTIMATE_PER_HEAD_USD, "Estimated per-person price (no public menu prices)"
-        else:
-            fits = safe if group == "standard" else [i for i in safe if DIET_TAGS.get(group, {group}) & set(i.dietary_tags)]
-            if not fits:
-                conflicts.append(f"no {_label(group)} items")
-                continue
-            per, package = round(mean(i.price_per_person for i in fits), 2), _package(fits)
+        fits = safe if group == "standard" else [i for i in safe if DIET_TAGS.get(group, {group}) & set(i.dietary_tags)]
+        if not fits:
+            conflicts.append(f"no {_label(group)} items")
+            continue
+        per, package = round(mean(i.price_per_person for i in fits), 2), _package(fits)
         lines.append(LineItem(group=group, package=package, headcount=n, per_head_usd=per,
                               subtotal_usd=round(per * n, 2)))
 

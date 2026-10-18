@@ -41,7 +41,7 @@ PROTOCOL_NAME = "HaggleNegotiation"
 PROTOCOL_VERSION = "0.1.0"
 # Digest of the HaggleNegotiation protocol as built below. Discovery filters Agentverse search by it;
 # vendors/vendor_host.py checks it on startup, so update it if the messages or handlers change.
-PROTOCOL_DIGEST = "proto:c71e5ba5a611d08d04cfaccb7d450245219bbbab0a427852327ec58d613acde6"
+PROTOCOL_DIGEST = "proto:5a4938c87119b9544f09bd39aaeb8d99dd68be6b1eef86f3e80f44ba815232ca"
 
 DATA_DIR = Path(__file__).parent / "data"
 README_DIR = Path(__file__).parent / "readme"
@@ -52,7 +52,8 @@ QUOTE_EXPIRES_S = 24 * 3600
 OWNER_FIXABLE = ("needs ", "maximum headcount")  # rule violations the owner may waive
 
 UNCLAIMED_NOTE = "Estimate from public menu — not confirmed by the business"
-ESTIMATED_NOTE = "Estimate from typical LA catering prices — no public menu prices — not confirmed by the business"
+NO_PRICES = "no public menu prices yet — Haggle can request a quote from the business by email"
+MENU_PREVIEW_ITEMS = 8
 UNCLAIMED_COUNTER = "unclaimed vendor — Haggle will request a quote from the business by email"
 UNCLAIMED_ACCEPT = "unclaimed vendors can't be booked — Haggle will request a quote from the business by email"
 
@@ -174,14 +175,17 @@ def make_vendor_agent(menu: VendorMenu | dict, seed: str, on_menu_change: Option
     def build_quote(rfq: RFQ, price: float, lines, ok: bool, conflicts: list[str], status: str = "quoted",
                     note: Optional[str] = None) -> Quote:
         if note is None:
-            note = ("Thanks for the request!" if menu.claimed
-                    else ESTIMATED_NOTE if not menu.priced_items else UNCLAIMED_NOTE)
+            note = "Thanks for the request!" if menu.claimed else UNCLAIMED_NOTE
+        preview = [f"{i.name} — {usd(i.price_per_person)}/person" if i.price_per_person is not None
+                   else f"{i.name}" + (f" — {i.description}" if i.description else "")
+                   for i in menu.items[:MENU_PREVIEW_ITEMS]]
         return Quote(
             rfq_id=rfq.rfq_id, vendor_id=menu.slug, vendor_name=menu.name, total_usd=price,
             per_head_usd=round(price / max(rfq.headcount, 1), 2), delivery_fee_usd=menu.rules.delivery_fee_usd,
             items=lines, claimed=menu.claimed, estimate=not menu.claimed, status=status, note=note,
             version=rfq.version, dietary_ok=ok, conflicts=conflicts,
-            expires_in_s=QUOTE_EXPIRES_S if menu.claimed else 0, trace=rfq.trace,
+            expires_in_s=QUOTE_EXPIRES_S if menu.claimed else 0, menu_preview=preview,
+            menu_url=menu.source_url, trace=rfq.trace,
         )
 
     def decline(rfq_id: str, version: int, reason: str, trace: str = "") -> Decline:
@@ -281,10 +285,11 @@ def make_vendor_agent(menu: VendorMenu | dict, seed: str, on_menu_change: Option
 
             violations = check_rules(menu.rules, rfq, vendor_lat=menu.lat, vendor_lng=menu.lng)
             price, lines, ok, conflicts = price_for(menu, rfq)
-            # An estimated menu can't confirm diets; that's flagged on the quote, not a reason to decline.
-            hard_conflicts = conflicts if menu.priced_items else []
+            hard_conflicts = conflicts
             st = {"rfq": rfq.json(), "negotiator": sender}
-            if not menu.claimed:
+            if not menu.priced_items:
+                reply = decline(rfq.rfq_id, rfq.version, NO_PRICES, rfq.trace)
+            elif not menu.claimed:
                 if violations or hard_conflicts:
                     reply = decline(rfq.rfq_id, rfq.version, "; ".join(violations + hard_conflicts), rfq.trace)
                 else:

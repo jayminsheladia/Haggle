@@ -204,13 +204,22 @@ def quotes_carousel(rfq_id: str, title: str, quotes: list[dict]) -> dict:
     }
 
 
-def quote_detail(rfq_id: str, q: dict, can_negotiate: bool) -> dict:
-    """Detail card for one quote. q: carousel item fields plus "rows": [(label, value)]."""
+def quote_detail(rfq_id: str, q: dict, can_negotiate: bool, next_step: str = "") -> dict:
+    """Detail card for one quote. q: carousel item fields plus "rows": [(label, value)].
+
+    next_step: "book" (claimed vendor), "request_quote" (unclaimed estimate) or "" (nothing to do yet).
+    """
     ctas = []
+    if next_step:
+        ctas.append({
+            "label": "Book" if next_step == "book" else "Request a confirmed quote",
+            "primary": True,
+            "selection": {"action": next_step, "rfq_id": rfq_id, "vendor_id": q["vendor_id"]},
+        })
     if can_negotiate:
         ctas.append({
             "label": "Negotiate lower",
-            "primary": True,
+            "primary": not next_step,
             "selection": {"action": "negotiate", "rfq_id": rfq_id, "vendor_id": q["vendor_id"]},
         })
     ctas.append({"label": "Back", "selection": {"action": "back", "rfq_id": rfq_id, "vendor_id": q["vendor_id"]}})
@@ -250,4 +259,15 @@ def owner_rules_form(vendor_id: str, rules: dict) -> dict:
             "label": "Save rules",
             "selection": {"action": "save_rules", "rfq_id": "", "vendor_id": vendor_id},
         },
+    }
+
+
+def review_card(rfq_id: str, vendor_id: str, title: str, rows: list[tuple[str, str]], approve_label: str) -> dict:
+    """Confirm / cancel before anything is sent or charged."""
+    sel = {"rfq_id": rfq_id, "vendor_id": vendor_id}
+    return {
+        "title": title,
+        "summary_rows": [{"label": label, "value": value} for label, value in rows],
+        "approve_cta": {"label": approve_label, "primary": True, "selection": {"action": "confirm", **sel}},
+        "reject_cta": {"label": "Cancel", "selection": {"action": "cancel", **sel}},
     }

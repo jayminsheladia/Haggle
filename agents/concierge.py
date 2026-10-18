@@ -25,7 +25,7 @@ from uagents_core.contrib.protocols.chat import (
 
 from shared import observability
 from shared.cards import (
-    DIETS, card_message, event_form, quote_detail, quotes_carousel, text_message, usd, vendor_picker,
+    DIETS, card_message, event_form, quote_detail, quotes_carousel, review_card, text_message, usd, vendor_picker,
 )
 from shared.llm import chat_json
 from shared.models import (
@@ -40,13 +40,15 @@ load_dotenv()
 LA = ZoneInfo("America/Los_Angeles")
 
 DISCOVERY_ADDRESS = os.getenv(
-    "DISCOVERY_ADDRESS", "agent1q27868llc79a2pncexj4z6nejtjw87rg4p3cv4tjt27q9vuh2s8w7clzg5y"
+    "DISCOVERY_ADDRESS", "agent1qvrfzf7mnxhz6zmzgn2q6htwjec6fs5rg0wnz6ucj4cjhqlaefwr6l26g2g"
 )
 NEGOTIATOR_ADDRESS = os.getenv(
-    "NEGOTIATOR_ADDRESS", "agent1qwv99f5t6fyjgyjemmdsnluzmayarx8z4v40ytx0df0njqffl4vy6hdgj2z"
+    "NEGOTIATOR_ADDRESS", "agent1qg68ah5xmm3t9lcecua0dvqqknkqhqv4scrpf3cjjhx64lrqkpvd7erglhl"
 )
-FACTORY_ADDRESS = os.getenv("FACTORY_ADDRESS", "")
+FACTORY_ADDRESS = os.getenv("FACTORY_ADDRESS", "agent1qdzh8nw69qe2x0rw3tc7rg8ddt9e6lda8x7y6hqfjwfaldk2k7kzukj7rh5")
 ONBOARD_TIMEOUT_S = 75  # the Factory reads menus in parallel; usually well under a minute
+DEPOSIT_PCT = 0.20  # deposit taken at booking (build plan)
+NO_PRICES = "no public menu prices"
 
 # ---- Intake checklist ------------------------------------------------------
 # status: missing | needs_confirm | filled | offer | declined
@@ -362,7 +364,7 @@ async def _on_chat(ctx: Context, sender: str, msg: ChatMessage):
         await pick_vendors(ctx, sender, s, sel, text)
         ctx.storage.set(sender, s)
         return
-    if action in ("pick_quote", "negotiate", "back") and s.get("quotes"):
+    if action in ("pick_quote", "negotiate", "back", "book", "request_quote", "confirm", "cancel") and s.get("quotes"):
         await quote_action(ctx, sender, s, action, sel, text)
         ctx.storage.set(sender, s)
         return
@@ -804,6 +806,11 @@ def detail_rows(s: dict, vid: str) -> list[tuple[str, str]]:
         rows.append(("Distance", f"{v['distance_mi']} mi"))
     if q.get("conflicts"):
         rows.append(("Can't confirm", "; ".join(q["conflicts"])))
+    for line in q.get("menu_preview", []):
+        name, _, price = line.partition(" — ")
+        rows.append((f"Menu · {name}", price or "on the menu"))
+    if q.get("menu_url"):
+        rows.append(("Full menu", q["menu_url"]))
     rows.append(("Status", "Estimate · not confirmed" if q["estimate"]
                  else "Waiting on owner approval" if q["status"] == "needs_approval" else "Confirmed quote"))
     if q["note"]:
@@ -826,8 +833,11 @@ async def quote_action(ctx: Context, user: str, s: dict, action: str, sel: dict,
         await ctx.send(user, card_message(
             f"{q['vendor_name']}: {usd(q['total_usd'])} for {s['checklist']['headcount']['value']} guests.",
             "detail",
-            quote_detail(s["rfq_id"], view, can_negotiate(q)),
+            quote_detail(s["rfq_id"], view, can_negotiate(q), next_step(q)),
         ))
+        return
+    if action in ("book", "request_quote", "confirm", "cancel"):
+        await booking_action(ctx, user, s, action, vid)
         return
 
     # negotiate
@@ -846,6 +856,66 @@ async def quote_action(ctx: Context, user: str, s: dict, action: str, sel: dict,
     await ctx.send(user, text_message(f"Asking {q['vendor_name']} for a better price..."))
 
 
+def next_step(q: dict) -> str:
+    if q["status"] == "needs_approval":
+        return ""
+    return "request_quote" if q["estimate"] else "book"
+
+
+async def booking_action(ctx: Context, user: str, s: dict, action: str, vid: str) -> None:
+    """Book (claimed) or request a confirmed quote (unclaimed): a review card first, then confirm.
+    Payment and the emails are the Booker's job; until it is connected nothing is charged or sent."""
+    q, cl = s["quotes"][vid], s["checklist"]
+    when = summary(cl).split(" · ")[0]
+    if action in ("book", "request_quote"):
+        if next_step(q) != action:
+            await ctx.send(user, text_message("That isn't available for this caterer right now."))
+            return
+        rows = [("Caterer", q["vendor_name"]), ("When", when),
+                ("Where", s.get("location", {}).get("resolved") or cl["location"]["value"]),
+                ("Guests", display("headcount", cl["headcount"]["value"])),
+                ("Dietary", display("dietary", cl["dietary"]["value"]) + " · " + display("allergies", cl["allergies"]["value"]))]
+        if action == "book":
+            deposit = round(q["total_usd"] * DEPOSIT_PCT, 2)
+            s["booking"] = {"vendor_id": vid, "kind": "book", "total_usd": q["total_usd"], "deposit_usd": deposit}
+            rows += [("Total", usd(q["total_usd"])), (f"Deposit now ({DEPOSIT_PCT:.0%})", usd(deposit)),
+                     ("Balance to the caterer", usd(round(q["total_usd"] - deposit, 2))),
+                     ("Cancellation", "per the caterer's terms, confirmed in the booking email")]
+            card = review_card(s["rfq_id"], vid, "Confirm your booking", rows, f"Pay {usd(deposit)} deposit")
+            text = f"Review your booking with {q['vendor_name']}."
+        else:
+            target = cl["budget_usd"]["value"]
+            s["booking"] = {"vendor_id": vid, "kind": "request_quote", "total_usd": q["total_usd"]}
+            rows += [("Their estimate", f"{usd(q['total_usd'])} (not confirmed)"),
+                     ("Your target", usd(target) if target else "no fixed budget"),
+                     ("Sent to", "the business by email, with a link to claim its Haggle agent")]
+            card = review_card(s["rfq_id"], vid, "Request a confirmed quote", rows, "Send request")
+            text = f"{q['vendor_name']} hasn't confirmed its prices. I can ask them for a real quote."
+        await ctx.send(user, card_message(text, "review", card))
+        return
+
+    booking = s.get("booking")
+    if not booking or booking["vendor_id"] != vid:
+        await send_carousel(ctx, user, s, "Pick a caterer first.")
+        return
+    if action == "cancel":
+        s.pop("booking", None)
+        await send_carousel(ctx, user, s, "No problem, nothing was booked. Here are your quotes again.")
+        return
+    booking["confirmed"] = True  # idempotent: confirming twice changes nothing
+    s["stage"] = "awaiting_payment" if booking["kind"] == "book" else "quote_requested"
+    ctx.logger.info(f"[{s['rfq_id']}] {booking['kind']} confirmed with {vid}: {booking}")
+    if booking["kind"] == "book":
+        await ctx.send(user, text_message(
+            f"Got it: {q['vendor_name']}, {when}, {usd(booking['total_usd'])} with a "
+            f"{usd(booking['deposit_usd'])} deposit. The deposit step (Stripe, through Fetch's Payment Protocol) "
+            "isn't connected yet, so nothing has been charged. Your booking is saved and ready for it."))
+    else:
+        await ctx.send(user, text_message(
+            f"Saved: I'll ask {q['vendor_name']} for a confirmed quote. Sending the email isn't connected yet, "
+            "so nothing has gone out; the request is saved and ready."))
+
+
 @negotiation.on_message(NegotiationResult)
 async def on_negotiation_result(ctx: Context, sender: str, result: NegotiationResult):
     if sender != NEGOTIATOR_ADDRESS:
@@ -860,7 +930,11 @@ async def on_negotiation_result(ctx: Context, sender: str, result: NegotiationRe
 
     s["quotes"], s["list_prices"], s["declined"] = {}, {}, dict(result.declined)
     _store_ranked(s, result.ranked)
-    declined = "; ".join(f"{_vendor(s, vid).get('display_name', vid)}: {why}" for vid, why in s["declined"].items())
+    no_prices = [_vendor(s, vid).get("display_name", vid) for vid, why in s["declined"].items() if NO_PRICES in why]
+    declined = "; ".join(f"{_vendor(s, vid).get('display_name', vid)}: {why}"
+                         for vid, why in s["declined"].items() if NO_PRICES not in why)
+    if no_prices:
+        declined = "; ".join(filter(None, [declined, f"no public prices yet ({', '.join(no_prices)})"]))
     if not s["ranked"]:
         s["stage"] = "picking"
         ctx.storage.set(user, s)

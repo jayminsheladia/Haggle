@@ -1,0 +1,99 @@
+{
+  "name": "Saffron & Sage Catering (demo)",
+  "slug": "demo-saffron-sage",
+  "source_url": "",
+  "place_id": "",
+  "phone": "",
+  "email": "",
+  "address": "Westwood, Los Angeles, CA",
+  "lat": null,
+  "lng": null,
+  "items": [
+    {
+      "name": "Chicken Koobideh Plate",
+      "price_per_person": 18.5,
+      "description": null,
+      "dietary_tags": [
+        "halal"
+      ],
+      "serves": null
+    },
+    {
+      "name": "Beef Kabob Plate",
+      "price_per_person": 21.0,
+      "description": null,
+      "dietary_tags": [
+        "halal"
+      ],
+      "serves": null
+    },
+    {
+      "name": "Kosher Chicken Plate",
+      "price_per_person": 22.0,
+      "description": null,
+      "dietary_tags": [
+        "kosher"
+      ],
+      "serves": null
+    },
+    {
+      "name": "Falafel Plate",
+      "price_per_person": 15.0,
+      "description": null,
+      "dietary_tags": [
+        "vegetarian",
+        "vegan"
+      ],
+      "serves": null
+    },
+    {
+      "name": "Saffron Rice & Salad Bowl",
+      "price_per_person": 13.5,
+      "description": null,
+      "dietary_tags": [
+        "vegetarian",
+        "vegan",
+        "gluten-free"
+      ],
+      "serves": null
+    },
+    {
+      "name": "Mint Lemonade",
+      "price_per_person": 3.0,
+      "description": null,
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Baklava",
+      "price_per_person": 4.0,
+      "description": null,
+      "dietary_tags": [
+        "vegetarian",
+        "contains-nuts"
+      ],
+      "serves": null
+    },
+    {
+      "name": "Plates, utensils and napkins",
+      "price_per_person": 1.0,
+      "description": null,
+      "dietary_tags": [],
+      "serves": null
+    }
+  ],
+  "claimed": true,
+  "owner_contact": null,
+  "rules": {
+    "floor_discount_pct": 10.0,
+    "min_headcount": 15,
+    "max_headcount": 150,
+    "lead_time_hours": 24,
+    "delivery_radius_mi": 12.0,
+    "blackout_dates": [],
+    "auto_approve_limit_usd": 1500.0,
+    "delivery_fee_usd": 35.0
+  },
+  "extraction_status": "extracted",
+  "rating": null
+}

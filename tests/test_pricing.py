@@ -5,7 +5,7 @@ from datetime import datetime
 
 from shared.menu_schema import MenuItem, OwnerRules, VendorMenu
 from shared.models import RFQ
-from vendors.pricing import ESTIMATE_PER_HEAD_USD, check_rules, counter_response, floor_price, price_for
+from vendors.pricing import check_rules, counter_response, floor_price, price_for
 
 NOW = datetime(2026, 10, 17, 12, 0)
 
@@ -62,11 +62,10 @@ class PriceFor(unittest.TestCase):
         total, _, _, _ = price_for(menu(rules=OwnerRules(delivery_fee_usd=40)), rfq(headcount=10))
         self.assertEqual(total, 10 * 15 + 40)
 
-    def test_estimated_menu_uses_fallback_and_flags_diets(self):
-        total, _, ok, conflicts = price_for(menu(items=[]), rfq(headcount=20, dietary={"halal": 2}))
-        self.assertEqual(total, 20 * ESTIMATE_PER_HEAD_USD)
-        self.assertFalse(ok)
-        self.assertIn("halal options not confirmed", conflicts)
+    def test_menu_without_prices_is_never_priced(self):
+        total, lines, ok, conflicts = price_for(menu(items=[MenuItem(name="Tacos")]), rfq(headcount=20))
+        self.assertEqual((total, lines, ok), (0.0, [], False))
+        self.assertIn("no public menu prices", conflicts)
 
 
 class Rules(unittest.TestCase):

@@ -12,9 +12,9 @@ Haggle is a multi-agent group catering marketplace for Los Angeles, built on Fet
 | Agent | File | Address | Agentverse profile |
 |---|---|---|---|
 | Concierge `@haggle` | `agents/concierge.py` | `agent1qtczn7424hmp43jqetnl9pydsmqhcfzfg8muzyl5ajxwyep0mt7lxxewe9k` | [profile](https://agentverse.ai/agents/details/agent1qtczn7424hmp43jqetnl9pydsmqhcfzfg8muzyl5ajxwyep0mt7lxxewe9k/profile) |
-| Discovery | `agents/discovery.py` | `agent1q27868llc79a2pncexj4z6nejtjw87rg4p3cv4tjt27q9vuh2s8w7clzg5y` | [profile](https://agentverse.ai/agents/details/agent1q27868llc79a2pncexj4z6nejtjw87rg4p3cv4tjt27q9vuh2s8w7clzg5y/profile) |
+| Discovery | `agents/discovery.py` | `agent1qvrfzf7mnxhz6zmzgn2q6htwjec6fs5rg0wnz6ucj4cjhqlaefwr6l26g2g` | [profile](https://agentverse.ai/agents/details/agent1qvrfzf7mnxhz6zmzgn2q6htwjec6fs5rg0wnz6ucj4cjhqlaefwr6l26g2g/profile) |
 | Vendor Agent Factory | `agents/factory.py` | `agent1qdzh8nw69qe2x0rw3tc7rg8ddt9e6lda8x7y6hqfjwfaldk2k7kzukj7rh5` | [profile](https://agentverse.ai/agents/details/agent1qdzh8nw69qe2x0rw3tc7rg8ddt9e6lda8x7y6hqfjwfaldk2k7kzukj7rh5/profile) |
-| Negotiator | `agents/negotiator.py` | `agent1qwv99f5t6fyjgyjemmdsnluzmayarx8z4v40ytx0df0njqffl4vy6hdgj2z` | _TBD_ |
+| Negotiator | `agents/negotiator.py` | `agent1qg68ah5xmm3t9lcecua0dvqqknkqhqv4scrpf3cjjhx64lrqkpvd7erglhl` | [profile](https://agentverse.ai/agents/details/agent1qg68ah5xmm3t9lcecua0dvqqknkqhqv4scrpf3cjjhx64lrqkpvd7erglhl/profile) |
 | Booker | `agents/booker.py` | _TBD_ | _TBD_ |
 | Follow-up | `agents/followup.py` | _TBD_ | _TBD_ |
 
@@ -27,6 +27,8 @@ Haggle is a multi-agent group catering marketplace for Los Angeles, built on Fet
 | `bite-catering-couture` | unclaimed | `agent1qt3d4tjkk0j95rxxrx96e8ev5jv4c7axzdmn0sjvdk3cgj69uxag7pftz0m` | [profile](https://agentverse.ai/agents/details/agent1qt3d4tjkk0j95rxxrx96e8ev5jv4c7axzdmn0sjvdk3cgj69uxag7pftz0m/profile) |
 | `california-fresh` | unclaimed | `agent1qvdktefhz79faf8ett243nxqks467jwaq2wcxzywcd2p32f3pl3pccyl094` | [profile](https://agentverse.ai/agents/details/agent1qvdktefhz79faf8ett243nxqks467jwaq2wcxzywcd2p32f3pl3pccyl094/profile) |
 | `demo-bruin-tacos` | claimed (demo) | `agent1qg9hwj6783d4eax7tl0taj94h3msmyp23ul896zhvwr3f0efen0dxmnlu53` | [profile](https://agentverse.ai/agents/details/agent1qg9hwj6783d4eax7tl0taj94h3msmyp23ul896zhvwr3f0efen0dxmnlu53/profile) |
+| `demo-green-fork` | claimed (demo) | `agent1qvqphfwpa6qq6748zmr63mzq0afq3rk4a0yzh5ygq04n20c5yd76sv2kdzq` | [profile](https://agentverse.ai/agents/details/agent1qvqphfwpa6qq6748zmr63mzq0afq3rk4a0yzh5ygq04n20c5yd76sv2kdzq/profile) |
+| `demo-saffron-sage` | claimed (demo) | `agent1qfsgpykjxu9wart9tf887vey6tcc3vrurq4yagqzkr5p4rxfufzzs9flrtx` | [profile](https://agentverse.ai/agents/details/agent1qfsgpykjxu9wart9tf887vey6tcc3vrurq4yagqzkr5p4rxfufzzs9flrtx/profile) |
 | `demo-westwood-grill` | claimed (demo) | `agent1q2c5qk4ach3u45xlwqyk8mrpymg9vl7m8uqsk064khatvp0cvw65umpasnp` | [profile](https://agentverse.ai/agents/details/agent1q2c5qk4ach3u45xlwqyk8mrpymg9vl7m8uqsk064khatvp0cvw65umpasnp/profile) |
 | `rutts-hawaiian-cafe-catering` | unclaimed | `agent1qfqdcnj54d0tgg0v58sq4vkr2cg9ganf7egee2jkvrgzj03956h5jgglmcd` | [profile](https://agentverse.ai/agents/details/agent1qfqdcnj54d0tgg0v58sq4vkr2cg9ganf7egee2jkvrgzj03956h5jgglmcd/profile) |
 | `santa-maria-bbq-on-site-catering` | unclaimed | `agent1qtuxvjfct873q3xpnfkjshcytf9rnjprg8dkuepl8f2q0ga6xt6lgjq2gzj` | [profile](https://agentverse.ai/agents/details/agent1qtuxvjfct873q3xpnfkjshcytf9rnjprg8dkuepl8f2q0ga6xt6lgjq2gzj/profile) |
@@ -37,6 +39,8 @@ Haggle is a multi-agent group catering marketplace for Los Angeles, built on Fet
 | `yekta-catering-takeout` | unclaimed | `agent1q2ka6zhjew0y9uzhjrgsvgzpqpj9e2vg4afvgrpxt2rk07md8ks674h0l6p` | [profile](https://agentverse.ai/agents/details/agent1q2ka6zhjew0y9uzhjrgsvgzpqpj9e2vg4afvgrpxt2rk07md8ks674h0l6p/profile) |
 
 Every agent prints its address on startup — paste it here right away.
+
+Vendors marked **(demo)** are fictional businesses with realistic prices, claimed so they can negotiate. Every other vendor is a real LA caterer, unclaimed: its prices are copied from its public menu (Sunnin, UCLA, California Fresh), or it has no public prices and asks for a quote instead.
 
 Vendor addresses come from each vendor's slug + `VENDOR_SEED_SECRET`, so they match only with the team's shared secret; the vendor host writes the current list to `vendors/addresses.json`.
 
@@ -79,7 +83,8 @@ python -m agents.discovery      # Discovery, port 8002
 python -m agents.concierge      # @haggle, port 8001
 ```
 
-Start them in that order, each in its own terminal. Agents register their Agentverse mailbox with
+Or start all of them with one command (what the server runs): `python -m scripts.run_all`.
+Otherwise start them in that order, each in its own terminal. Agents register their Agentverse mailbox with
 `AGENTVERSE_API_KEY` where they can; without a free mailbox slot the Factory and vendors fall back to a
 local endpoint, which works when everything runs on one machine.
 
@@ -89,6 +94,24 @@ Point the Concierge at the agents you run with `DISCOVERY_ADDRESS`, `NEGOTIATOR_
 To (re)read the caterers in `vendors/sources.csv` into `vendors/data/`: `python -m scripts.extract_all`.
 
 _TBD — the Booker and Follow-up agents._
+
+## Deploy (always-on server)
+
+All agents run in one container (`Dockerfile`, `python -m scripts.run_all`); mailbox agents need no inbound ports.
+
+**Railway** (`railway.json` is in the repo):
+1. railway.com → New Project → Deploy from GitHub repo → `naman-gupta-02/Haggle`, branch `concierge` (or `main` after merging).
+2. Service → Variables → Raw editor → paste every line of your `.env` (keys and seeds; never commit them).
+3. Deploy. The logs show each agent's address; they must match the table above (same seeds = same addresses).
+4. **Stop any local copy of the agents** (same seeds on two machines fight over the mailboxes).
+
+Agent storage (sessions, approvals) lives in the container and resets on redeploy; vendor menus ship with the repo.
+
+## External agents
+
+None in use. Evaluated and rejected: Agentverse "Website Scraper Agent"
+(`agent1qwnjmzwwdq9rjs30y3qw988htrvte6lk2xaak9xg4kz0fsdz0t9ws4mwsgs`) as a backup page reader for the Factory: it was
+blocked by the same sites (HTTP 403) and took 13.6 s, over our ~5 s limit.
 
 ## Test
 
