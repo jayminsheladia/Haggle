@@ -14,7 +14,7 @@ Haggle is a multi-agent group catering marketplace for Los Angeles, built on Fet
 | Concierge `@haggle` | `agents/concierge.py` | `agent1qtczn7424hmp43jqetnl9pydsmqhcfzfg8muzyl5ajxwyep0mt7lxxewe9k` | [profile](https://agentverse.ai/agents/details/agent1qtczn7424hmp43jqetnl9pydsmqhcfzfg8muzyl5ajxwyep0mt7lxxewe9k/profile) |
 | Discovery | `agents/discovery.py` | `agent1q27868llc79a2pncexj4z6nejtjw87rg4p3cv4tjt27q9vuh2s8w7clzg5y` | [profile](https://agentverse.ai/agents/details/agent1q27868llc79a2pncexj4z6nejtjw87rg4p3cv4tjt27q9vuh2s8w7clzg5y/profile) |
 | Vendor Agent Factory | `agents/factory.py` | _TBD_ | _TBD_ |
-| Negotiator | `agents/negotiator.py` | _TBD_ | _TBD_ |
+| Negotiator | `agents/negotiator.py` | `agent1qwv99f5t6fyjgyjemmdsnluzmayarx8z4v40ytx0df0njqffl4vy6hdgj2z` | _TBD_ |
 | Booker | `agents/booker.py` | _TBD_ | _TBD_ |
 | Follow-up | `agents/followup.py` | _TBD_ | _TBD_ |
 

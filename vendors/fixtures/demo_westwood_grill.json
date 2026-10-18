@@ -1,0 +1,12 @@
+{
+  "vendor_id": "demo-westwood-grill",
+  "name": "Westwood Grill (demo)",
+  "claimed": true,
+  "rules": {"floor_pct": 12, "min_headcount": 10, "max_headcount": 80, "lead_time_h": 24,
+            "radius_mi": 10, "blackout_dates": [], "auto_approve_usd": 2000, "delivery_fee_usd": 40},
+  "packages": [
+    {"name": "Grill Classic", "per_head_usd": 16.0, "tags": [], "allergens": ["dairy"]},
+    {"name": "Garden Bowl", "per_head_usd": 14.5, "tags": ["vegetarian", "vegan"], "allergens": ["nuts"]},
+    {"name": "Halal Chicken Plate", "per_head_usd": 17.0, "tags": ["halal"], "allergens": []}
+  ]
+}
