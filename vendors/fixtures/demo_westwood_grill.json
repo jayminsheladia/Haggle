@@ -1,12 +1,56 @@
 {
-  "vendor_id": "demo-westwood-grill",
   "name": "Westwood Grill (demo)",
+  "slug": "demo-westwood-grill",
+  "source_url": "",
+  "place_id": "",
+  "phone": "",
+  "email": "",
+  "address": "Westwood, Los Angeles, CA",
+  "lat": null,
+  "lng": null,
+  "items": [
+    {
+      "name": "Grill Classic",
+      "price_per_person": 16.0,
+      "description": null,
+      "dietary_tags": [
+        "contains-dairy"
+      ],
+      "serves": null
+    },
+    {
+      "name": "Garden Bowl",
+      "price_per_person": 14.5,
+      "description": null,
+      "dietary_tags": [
+        "contains-nuts",
+        "vegan",
+        "vegetarian"
+      ],
+      "serves": null
+    },
+    {
+      "name": "Halal Chicken Plate",
+      "price_per_person": 17.0,
+      "description": null,
+      "dietary_tags": [
+        "halal"
+      ],
+      "serves": null
+    }
+  ],
   "claimed": true,
-  "rules": {"floor_pct": 12, "min_headcount": 10, "max_headcount": 80, "lead_time_h": 24,
-            "radius_mi": 10, "blackout_dates": [], "auto_approve_usd": 2000, "delivery_fee_usd": 40},
-  "packages": [
-    {"name": "Grill Classic", "per_head_usd": 16.0, "tags": [], "allergens": ["dairy"]},
-    {"name": "Garden Bowl", "per_head_usd": 14.5, "tags": ["vegetarian", "vegan"], "allergens": ["nuts"]},
-    {"name": "Halal Chicken Plate", "per_head_usd": 17.0, "tags": ["halal"], "allergens": []}
-  ]
+  "owner_contact": null,
+  "rules": {
+    "floor_discount_pct": 12.0,
+    "min_headcount": 10,
+    "max_headcount": 80,
+    "lead_time_hours": 24,
+    "delivery_radius_mi": 10.0,
+    "blackout_dates": [],
+    "auto_approve_limit_usd": 2000.0,
+    "delivery_fee_usd": 40.0
+  },
+  "extraction_status": "extracted",
+  "rating": null
 }

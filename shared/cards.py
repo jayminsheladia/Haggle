@@ -120,14 +120,14 @@ def vendor_picker(rfq_id: str, location: str, vendors: list[dict]) -> dict:
     """Custom card: every discovered caterer with a checkbox, then "Get quotes".
 
     vendors: [{"vendor_id", "name", "photo_url", "meta", "live"}] where `live` means the vendor
-    has a Haggle agent that can quote now; the others are unclaimed (quote request by email).
+    already has a Haggle agent; the others get one from the Factory when picked.
     """
     rows: list[dict] = []
     for i, v in enumerate(vendors):
         badge = (
-            {"type": "badge", "label": "Live quote", "variant": "success"}
+            {"type": "badge", "label": "Haggle agent", "variant": "success"}
             if v["live"]
-            else {"type": "badge", "label": "Quote by email", "variant": "info"}
+            else {"type": "badge", "label": "From public menu", "variant": "info"}
         )
         rows.append({
             "type": "group",
@@ -219,4 +219,35 @@ def quote_detail(rfq_id: str, q: dict, can_negotiate: bool) -> dict:
         **({"hero_image": q["photo_url"]} if q["photo_url"] else {}),
         "summary_rows": [{"label": label, "value": value} for label, value in q["rows"]],
         "ctas": ctas,
+    }
+
+
+def owner_rules_form(vendor_id: str, rules: dict) -> dict:
+    """Form card a vendor owner fills in after claiming: their negotiation rules.
+
+    rules: current OwnerRules as a dict; shown in labels since form fields can't be pre-filled.
+    """
+    def field(name: str, kind: str, label: str) -> dict:
+        current = rules.get(name)
+        if isinstance(current, list):
+            current = ", ".join(current) or "none"
+        return {"name": name, "kind": kind, "label": f"{label} (now: {current} - leave blank to keep)",
+                "required": False}
+
+    return {
+        "title": "Your Haggle rules",
+        "fields": [
+            field("floor_discount_pct", "number", "Lowest discount you'll go to, in % off list price"),
+            field("min_headcount", "number", "Minimum guests"),
+            field("max_headcount", "number", "Maximum guests"),
+            field("lead_time_hours", "number", "Notice you need, in hours"),
+            field("delivery_radius_mi", "number", "Delivery radius in miles"),
+            field("blackout_dates", "text", "Dates you're closed (YYYY-MM-DD, comma separated)"),
+            field("auto_approve_limit_usd", "number", "Orders above this total ($) need your approval"),
+            field("delivery_fee_usd", "number", "Delivery fee ($)"),
+        ],
+        "submit_cta": {
+            "label": "Save rules",
+            "selection": {"action": "save_rules", "rfq_id": "", "vendor_id": vendor_id},
+        },
     }

@@ -16,7 +16,7 @@ from vendors.template import make_vendor_agent
 
 FIXTURES = Path(__file__).parent / "fixtures"
 menus = [json.loads(p.read_text()) for p in sorted(FIXTURES.glob("demo_*.json"))]
-vendors = [make_vendor_agent(m, seed=f"haggle-demo-vendor-{m['vendor_id']}") for m in menus]
+vendors = [make_vendor_agent(m, seed=f"haggle-demo-vendor-{m['slug']}") for m in menus]
 negotiator = make_negotiator()
 concierge = Agent(name="demo-concierge", seed="haggle-demo-concierge")
 
@@ -25,7 +25,7 @@ concierge = Agent(name="demo-concierge", seed="haggle-demo-concierge")
 async def start(ctx: Context):
     rfq = RFQ(rfq_id="rfq-demo-1", event_date="2026-10-23", event_time="18:00", location="Ackerman Union, UCLA",
               headcount=60, budget_usd=850, dietary={"vegetarian": 10, "halal": 3}, allergies=[], trace="demo")
-    refs = [VendorRef(vendor_id=m["vendor_id"], name=m["name"], address=a.address, distance_mi=2.1,
+    refs = [VendorRef(vendor_id=m["slug"], name=m["name"], address=a.address, distance_mi=2.1,
                       claimed=m["claimed"], rating=r) for m, a, r in zip(menus, vendors, [4.6, 4.3])]
     await ctx.send(negotiator.address, NegotiationRequest(rfq=rfq, vendors=refs, trace="demo"))
 

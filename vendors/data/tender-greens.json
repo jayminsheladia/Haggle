@@ -1,0 +1,27 @@
+{
+  "name": "Tender Greens",
+  "slug": "tender-greens",
+  "source_url": "https://www.tendergreens.com/wp-content/uploads/2026/10/TGCateringMenu_10.2026_WEB.pdf",
+  "place_id": "ChIJudOPkIG8woAR3VfN58omCFY",
+  "phone": "(213) 335-5359",
+  "email": "",
+  "address": "1109 Glendon Ave, Los Angeles, CA 90024",
+  "lat": null,
+  "lng": null,
+  "items": [],
+  "claimed": false,
+  "owner_contact": null,
+  "rules": {
+    "floor_discount_pct": 12.0,
+    "min_headcount": 10,
+    "max_headcount": 200,
+    "lead_time_hours": 48,
+    "delivery_radius_mi": 10.0,
+    "blackout_dates": [],
+    "auto_approve_limit_usd": 2000.0,
+    "delivery_fee_usd": 0.0
+  },
+  "extraction_status": "estimated",
+  "extracted_at": "2026-10-18T02:10:06.500211+00:00",
+  "rating": null
+}

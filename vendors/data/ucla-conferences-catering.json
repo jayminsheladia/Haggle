@@ -1,0 +1,130 @@
+{
+  "name": "UCLA Conferences & Catering",
+  "slug": "ucla-conferences-catering",
+  "source_url": "https://www.conferences.ucla.edu/?p=699",
+  "place_id": "ChIJzVY0x428woARIbSN-ibwtCs",
+  "phone": "(310) 825-5305",
+  "email": "",
+  "address": "200 De Neve Dr Ste l-02, Los Angeles, CA 90095",
+  "lat": null,
+  "lng": null,
+  "items": [
+    {
+      "name": "True Bruin Salads & Sandwiches Lunch Buffet",
+      "price_per_person": 45.0,
+      "description": "Market greens with house dressing; orzo salad; sandwiches (roasted turkey with Havarti, herb-roasted vegetables vegan, roasted beef); market vegetable platter with Greek yogurt dill dip; assorted cookies",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Mediterranean Lunch Buffet",
+      "price_per_person": 55.0,
+      "description": "Arugula salad; Greek village salad; grilled lemon-herb chicken; Mediterranean-spiced beef tenderloin; pearl couscous salad; grilled and crudo market vegetables with hummus; fresh seasonal fruit platter; assorted breads and focaccia; walnut baklava; Greek honey pistachio cake",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Plant Forward Lunch Buffet",
+      "price_per_person": 55.0,
+      "description": "Simple salad; green vegetable salad; stewed lentils and chickpeas; roasted eggplant and sweet potato; vegan 'chicken' with pineapple sambal glaze; curry-spiced tofu; vegan cookies",
+      "dietary_tags": [
+        "vegetarian"
+      ],
+      "serves": null
+    },
+    {
+      "name": "Asia Lunch Buffet",
+      "price_per_person": 55.0,
+      "description": "Lao noodle salad; Yangzhou fried rice; bok choy and broccoli; kalbi beef short ribs; Thai chicken thighs; fruit platter; lychee custard; mini melon pan",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Buon Cibo Italiano Lunch Buffet",
+      "price_per_person": 57.0,
+      "description": "Big Italian salad; tomato and fresh mozzarella; penne and pomodoro; roasted fennel and rapini; roasted Tuscan chicken breast; Sicilian-style baked cod; espresso panna cotta; chocolate torta della nonna",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "California Market Lunch Buffet",
+      "price_per_person": 59.0,
+      "description": "Bibb lettuce salad; ancient grains salad; roasted fingerling potatoes; seasonal roasted market vegetables; grilled Santa Maria beef medallions; pan-seared salmon; strawberry parfait; apple crumble tart",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Latin America Lunch Buffet",
+      "price_per_person": 57.0,
+      "description": "Kale and quinoa salad; salsa bar with tortilla chips; roasted zucchini and chayote; authentic Mexican rice; stewed black beans; fajitas with grilled steak; chipotle chicken breast; flan tart; arroz con leche",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Southern Barbecue Lunch Buffet",
+      "price_per_person": 55.0,
+      "description": "Southern tossed salad; sweet and sour coleslaw; classic potato salad; gooey mac and cheese; blackened green beans; grilled chicken breast; slow-smoked pulled pork with Hawaiian sweet rolls; hand-cut watermelon; banana pudding; lemon meringue tart",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Hudson Valley Dinner Buffet",
+      "price_per_person": 75.0,
+      "description": "Garrison salad; roasted cabbage and quinoa salad; blackened green beans; seared polenta cakes; marinated chicken breast; macadamia-crusted sea bass; lemon and honey panna cotta; cheesecake",
+      "dietary_tags": [
+        "contains-nuts"
+      ],
+      "serves": null
+    },
+    {
+      "name": "Vegan Eats Dinner Buffet",
+      "price_per_person": 70.0,
+      "description": "Kale salad; cauliflower salad; bomba rice; roasted eggplant and kabocha; penne with Impossible fennel seed sausage; seared tofu; vanilla panna cotta; chocolate sweet potato mousse",
+      "dietary_tags": [
+        "vegan"
+      ],
+      "serves": null
+    },
+    {
+      "name": "Caribbean Dinner Buffet",
+      "price_per_person": 75.0,
+      "description": "Rainbow salad; Caribbean bean salad; arroz con gris; metemgee stew; pan-fried red fish; jerk chicken breast; key lime tart; coconut panna cotta",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "American Regional Bounty Dinner Buffet",
+      "price_per_person": 75.0,
+      "description": "Artichoke and smoked oyster dip with kettle chips; down South salad; Georgia macaroni salad; maple glazed Brussels sprouts and carrots; roasted sweet potatoes; roasted sea bass; grilled chicken breast; chocolate caramel cake; cheesecake tart",
+      "dietary_tags": [
+        "contains-nuts"
+      ],
+      "serves": null
+    },
+    {
+      "name": "Coastal Dinner Buffet",
+      "price_per_person": 80.0,
+      "description": "Arugula and blueberry salad; honeydew and tomato salad with prosciutto; grilled asparagus and white turnips; whipped potatoes with lobster; pan-seared ocean perch; Nantucket baked cod; blueberry lemon parfait; olive white chocolate tart",
+      "dietary_tags": [
+        "contains-dairy",
+        "contains-nuts"
+      ],
+      "serves": null
+    }
+  ],
+  "claimed": false,
+  "owner_contact": null,
+  "rules": {
+    "floor_discount_pct": 12.0,
+    "min_headcount": 10,
+    "max_headcount": 200,
+    "lead_time_hours": 48,
+    "delivery_radius_mi": 10.0,
+    "blackout_dates": [],
+    "auto_approve_limit_usd": 2000.0,
+    "delivery_fee_usd": 0.0
+  },
+  "extraction_status": "extracted",
+  "extracted_at": "2026-10-18T02:10:04.495194+00:00",
+  "rating": null
+}

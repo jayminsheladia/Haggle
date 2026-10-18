@@ -1,0 +1,510 @@
+{
+  "name": "California Fresh",
+  "slug": "california-fresh",
+  "source_url": "https://californiafreshla.com/catering",
+  "place_id": "ChIJhd7G95u7woARkMsQg5wJ32E",
+  "phone": "(310) 234-0333",
+  "email": "",
+  "address": "2000 Westwood Blvd, Los Angeles, CA 90025",
+  "lat": null,
+  "lng": null,
+  "items": [
+    {
+      "name": "Breakfast Pastries",
+      "price_per_person": 9.0,
+      "description": "Half tray $45 / Full tray $90. Requires 24 hour advanced notice. Fresh selection of rotating baked goods.",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Breakfast Burritos",
+      "price_per_person": 12.0,
+      "description": "Half tray $60 / Full tray $120. Scrambled eggs, potatoes, pico de gallo",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Scrambled Eggs",
+      "price_per_person": 11.0,
+      "description": "Half tray $55 / Full tray $110",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Breakfast Potatoes",
+      "price_per_person": 10.0,
+      "description": "Half tray $50 / Full tray $85. Potatoes, onions, bell peppers",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Seasonal Fresh Fruit",
+      "price_per_person": null,
+      "description": "Fresh seasonal fruit",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Burekas",
+      "price_per_person": null,
+      "description": "Puff pastries filled with cheese or potatoes. $30/dozen",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "California Lox Platter",
+      "price_per_person": null,
+      "description": "Smoked salmon, sliced tomatoes, cucumbers, red onions and capers",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Tuna Salad",
+      "price_per_person": 3.5,
+      "description": "80oz bowl serves 20-25 people",
+      "dietary_tags": [],
+      "serves": 20
+    },
+    {
+      "name": "Egg Salad",
+      "price_per_person": 3.5,
+      "description": "80oz bowl serves 20-25 people",
+      "dietary_tags": [],
+      "serves": 20
+    },
+    {
+      "name": "Caprese Platter",
+      "price_per_person": null,
+      "description": "Tomatoes, fresh Mozzarella, basil, balsamic glaze",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Seasonal Fresh Fruit (Shares)",
+      "price_per_person": null,
+      "description": "The best of the seasons fresh fruit",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Hummus (Shares)",
+      "price_per_person": 8.0,
+      "description": "Half tray $40 / Full tray $65. Served with our signature pita bread",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Fresh Vegetable Platter",
+      "price_per_person": null,
+      "description": "Selection of fresh vegetables with homemade hummus and ranch dressing.",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Mediterranean Platter",
+      "price_per_person": null,
+      "description": "Hummus, Tabouli, Israeli cucumber tomato Salad, Moroccan Carrot Salad, Beet Salad and eggplant salad. Order must be placed 24 hours in advance",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Full Tray Focaccia Bread",
+      "price_per_person": null,
+      "description": "Choose from herb, veggie or pepperoni",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Garlic Knots",
+      "price_per_person": null,
+      "description": "60 pieces tossed with olive oil, garlic and herbs; served with marinara sauce",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Garden Salad",
+      "price_per_person": 8.0,
+      "description": "Half tray $40 / Full tray $55. Lettuce, carrots, red cabbage, tomatoes, cucumbers, Italian dressing. Add Chicken half tray $10 / full tray $15",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Caesar Salad",
+      "price_per_person": 7.0,
+      "description": "Half tray $35 / Full tray $50. Romaine lettuce, Parmesan cheese, homemade croutons, Caesar dressing. Add Chicken half tray $10 / full tray $15",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Greek Salad",
+      "price_per_person": 9.0,
+      "description": "Half tray $45 / Full tray $60. Lettuce, tomatoes, cucumbers, bell peppers, red onions, feta, olives, Italian dressing. Add Chicken half tray $10 / full tray $15",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Grilled Veggie Salad",
+      "price_per_person": 8.0,
+      "description": "Half tray $40 / Full tray $55. Mixed greens, shredded cabbage, fresh seasonal grilled veggies, balsamic vinaigrette. Add Chicken half tray $10 / full tray $15",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Avocado Salad",
+      "price_per_person": 9.0,
+      "description": "Half tray $45 / Full tray $60. Lettuce, avocado, grilled corn, red cabbage, tomatoes, tortilla chips, black beans, ranch dressing. Add chicken half tray $10 / full tray $15",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Antioxidant Salad",
+      "price_per_person": 8.0,
+      "description": "Half tray $40 / Full tray $55. Mixed greens, dried cranberries, grapes, celery, walnuts, balsamic vinaigrette. Add Chicken half tray $10 / full tray $15",
+      "dietary_tags": [
+        "contains-nuts"
+      ],
+      "serves": 5
+    },
+    {
+      "name": "BBQ Chicken Salad",
+      "price_per_person": 10.0,
+      "description": "Half tray $50 / Full tray $70. Grilled chicken breast, lettuce, cabbage, grilled corn, tortilla chips, ranch dressing",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Chinese Chicken Salad",
+      "price_per_person": 10.0,
+      "description": "Half tray $50 / Full tray $70. Grilled chicken breast, lettuce, carrots, red cabbage, toasted almonds, Chinese noodles, Chinese dressing",
+      "dietary_tags": [
+        "contains-nuts"
+      ],
+      "serves": 5
+    },
+    {
+      "name": "Italian Chopped Salad",
+      "price_per_person": 9.0,
+      "description": "Half tray $45 / Full tray $60. Lettuce, tomatoes, garbanzo beans, olives, salami, Mozzarella cheese, Italian dressing",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Chicken Kabob",
+      "price_per_person": 10.0,
+      "description": "Half tray $50 / Full tray $100. Chargrilled Skewers of chicken breast with onions and tomatoes",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Chicken Shawarma",
+      "price_per_person": 14.0,
+      "description": "Half tray $70 / Full tray $140. Very popular! Thinly sliced chicken with shawarma seasoning",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Chicken Marsala",
+      "price_per_person": 12.0,
+      "description": "Half tray $60 / Full tray $120. Sauteed with mushrooms and Marsala wine",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Chicken Piccata",
+      "price_per_person": 12.0,
+      "description": "Half tray $60 / Full tray $120. Crispy pan seared chicken breast with capers and white wine",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "BBQ Chicken Breast",
+      "price_per_person": 12.0,
+      "description": "Half tray $60 / Full tray $120",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Chicken Fajitas",
+      "price_per_person": 14.0,
+      "description": "Half tray $70 / Full tray $140. Chicken sauteed with onions and bell peppers",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Lemon Olive Chicken",
+      "price_per_person": 14.0,
+      "description": "Half tray $70 / Full tray $140. Juicy and tender drumsticks and thigh chicken on the bone, marinated and seasoned and oven roasted",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Beef Kabob",
+      "price_per_person": 11.0,
+      "description": "Half tray $55 / Full tray $95. Ground beef with Mediterranean spices, chargrilled with side of roasted tomatoes",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Lemon Pepper Salmon",
+      "price_per_person": 16.0,
+      "description": "Half tray $80 / Full tray $160. with lemon pepper garlic",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Salmon with Roasted Tomatoes & Arugula",
+      "price_per_person": 16.0,
+      "description": "Half tray $80 / Full tray $160. Melt in your mouth Italian style fish",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Teriyaki Salmon",
+      "price_per_person": 16.0,
+      "description": "Half tray $80 / Full tray $160. Delicious oven roasted salmon with teriyaki sauce, scallions and sesame seeds on a bed of steamed cabbage",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Grilled Tilapia or Whitefish",
+      "price_per_person": 14.0,
+      "description": "Half tray $70 / Full tray $140",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Hummus (Sides)",
+      "price_per_person": 8.0,
+      "description": "Half tray $40 / Full tray $65. Homemade ground chickpea dip",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Israeli Salad",
+      "price_per_person": 8.0,
+      "description": "Half tray $40 / Full tray $60. Tomatoes, Cucumbers, Red Onions, House Dressing",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Steamed Vegetables",
+      "price_per_person": 8.0,
+      "description": "Half tray $40 / Full tray $70. Medley of Steamed Fresh Seasonal Vegetables",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Grilled Vegetables",
+      "price_per_person": 9.0,
+      "description": "Half tray $45 / Full tray $75. Market Fresh Vegetables Marinated and Grilled",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Roasted Potatoes",
+      "price_per_person": 7.0,
+      "description": "Half tray $35 / Full tray $55. Herb Roasted Potatoes",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Pasta Salad",
+      "price_per_person": 8.0,
+      "description": "Half tray $40 / Full tray $70. Fusilli tossed with fresh tomatoes, fresh basil, and olives with our house vinaigrette",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Rice",
+      "price_per_person": 7.0,
+      "description": "Half tray $35 / Full tray $50. Rice pilaf with lentils",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Veggie Rice",
+      "price_per_person": 8.0,
+      "description": "Half tray $40 / Full tray $55. Rice with peas, carrots, and bell peppers",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Cilantro Corn Rice",
+      "price_per_person": 8.0,
+      "description": "Half tray $40 / Full tray $55. White rice, grilled corn, cilantro",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Mashed Potatoes",
+      "price_per_person": 7.0,
+      "description": "Half tray $35 / Full tray $55. Contains dairy but can be made non dairy upon request",
+      "dietary_tags": [
+        "contains-dairy"
+      ],
+      "serves": 5
+    },
+    {
+      "name": "Panini (Half Tray)",
+      "price_per_person": 14.0,
+      "description": "Mix and match. Half tray $70 serves 5-9. Options: Tuscan, Cali Turkey, Caprese, Green Goddess, Italian, Tuna, Grilled Veggie, Sabich, Tunisian, Shakshuka, Waldorf Chicken",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Panini (Full Tray)",
+      "price_per_person": 13.0,
+      "description": "Mix and match. Full tray $130 serves 10-15",
+      "dietary_tags": [],
+      "serves": 10
+    },
+    {
+      "name": "Wraps (Half Tray)",
+      "price_per_person": 14.0,
+      "description": "Half tray serves 5-9. Options: Caesar Chicken, Greek Chicken, Chinese Chicken, BBQ Chicken, Shawarma Chicken, Mexican Veggie, Turkey",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Wraps (Full Tray)",
+      "price_per_person": 13.0,
+      "description": "Full tray serves 10-15",
+      "dietary_tags": [],
+      "serves": 10
+    },
+    {
+      "name": "Spaghetti Marinara",
+      "price_per_person": 9.0,
+      "description": "Half tray $45 / Full tray $85. Tomato Sauce with Fresh Herbs",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Fettuccine Alfredo",
+      "price_per_person": 9.0,
+      "description": "Half tray $45 / Full tray $85. Creamy Alfredo Sauce with Parmesan Cheese",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Spicy Arrabiata",
+      "price_per_person": 9.0,
+      "description": "Half tray $45 / Full tray $85. Penne Pasta, Spicy Tomato Sauce with Fresh Herbs",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Creamy Tomato",
+      "price_per_person": 9.0,
+      "description": "Half tray $45 / Full tray $85. Fettuccine Pasta, Creamy Alfredo and Tomato Sauce with Fresh Herbs",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Pesto Fettuccine",
+      "price_per_person": 9.0,
+      "description": "Half tray $45 / Full tray $85. Creamy Basil Pesto Sauce",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Penne Primavera",
+      "price_per_person": 11.0,
+      "description": "Half tray $55 / Full tray $90. Seasonal Vegetables in a Tomato Sauce with fresh Herbs",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Meat Lasagna",
+      "price_per_person": 15.0,
+      "description": "Half tray $75 / Full tray $140. Orders must be placed 24 hours in advance",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Vegetable Lasagna",
+      "price_per_person": 14.0,
+      "description": "Half tray $70 / Full tray $130. Orders must be placed 24 hours in advance",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Pizza (Small)",
+      "price_per_person": null,
+      "description": "Small pizza $13. Vegetable and meat/cheese toppings available for extra charge",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Pizza (Medium)",
+      "price_per_person": null,
+      "description": "Medium pizza $15. Vegetable and meat/cheese toppings available for extra charge",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Pizza (Large)",
+      "price_per_person": null,
+      "description": "Large pizza $20. Vegetable and meat/cheese toppings available for extra charge",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Gourmet Pizza (Small)",
+      "price_per_person": null,
+      "description": "BBQ Chicken, Pesto Chicken, Meat Lovers, or Vegetarian",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Gourmet Pizza (Medium)",
+      "price_per_person": null,
+      "description": "BBQ Chicken, Pesto Chicken, Meat Lovers, or Vegetarian",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Gourmet Pizza (Large)",
+      "price_per_person": null,
+      "description": "BBQ Chicken, Pesto Chicken, Meat Lovers, or Vegetarian",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Mexican Group Catering",
+      "price_per_person": null,
+      "description": "Chicken fajitas, rice, black beans, pico de gallo, guacamole, tortillas, grilled vegetables, tex mex salad, selection of desserts. Prices vary please call for a quote",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Italian Group Catering",
+      "price_per_person": null,
+      "description": "Selection of pastas, choice of chicken piccata, chicken marsala, salmon, grilled vegetables, Italian chopped salad, caprese salad, focaccia bread, garlic knots, tiramisu. Prices vary please call for a quote",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Mediterranean Group Catering",
+      "price_per_person": null,
+      "description": "Mediterranean salads, carrot salad, eggplant, beets, hummus, tahini, cucumber tomato salad, pita bread, chicken shawarma, Moroccan fish, beef kabob with roasted tomatoes, rice, roasted vegetables, roasted potatoes, selection of desserts. Prices vary please call for a quote",
+      "dietary_tags": [],
+      "serves": null
+    }
+  ],
+  "claimed": false,
+  "owner_contact": null,
+  "rules": {
+    "floor_discount_pct": 12.0,
+    "min_headcount": 10,
+    "max_headcount": 200,
+    "lead_time_hours": 48,
+    "delivery_radius_mi": 10.0,
+    "blackout_dates": [],
+    "auto_approve_limit_usd": 2000.0,
+    "delivery_fee_usd": 0.0
+  },
+  "extraction_status": "extracted",
+  "extracted_at": "2026-10-18T02:10:04.132793+00:00",
+  "rating": null
+}

@@ -19,6 +19,7 @@ from uagents import Agent, Context, Protocol
 from integrations import places
 from shared import observability
 from shared.models import DiscoveryRequest, DiscoveryResult, VendorInfo
+from vendors.template import PROTOCOL_DIGEST
 
 load_dotenv()
 
@@ -29,11 +30,9 @@ HTTP_TIMEOUT_S = 10
 async def agentverse_vendors(limit: int, client: httpx.AsyncClient) -> list[VendorInfo]:
     """Active vendor agents on Agentverse that speak HaggleNegotiation.
 
-    Returns nothing until NEGOTIATION_PROTOCOL_DIGEST is set (Person C prints it from the vendor template).
+    NEGOTIATION_PROTOCOL_DIGEST in .env overrides the digest from vendors/template.py.
     """
-    digest = os.environ.get("NEGOTIATION_PROTOCOL_DIGEST")
-    if not digest:
-        return []
+    digest = os.environ.get("NEGOTIATION_PROTOCOL_DIGEST") or PROTOCOL_DIGEST
     r = await client.post(
         AGENTVERSE_SEARCH_URL,
         json={

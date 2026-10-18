@@ -21,7 +21,7 @@ _client: AsyncOpenAI | None = None
 def client() -> AsyncOpenAI:
     global _client
     if _client is None:
-        _client = AsyncOpenAI(base_url=BASE_URL, api_key=os.environ["ASI1_API_KEY"], timeout=30)
+        _client = AsyncOpenAI(base_url=BASE_URL, api_key=os.environ["ASI1_API_KEY"], timeout=30, max_retries=1)
     return _client
 
 
@@ -42,12 +42,31 @@ def extract_json(text: str) -> dict | None:
         return None
 
 
-async def chat_json(system: str, user: str, max_tokens: int = 800) -> dict | None:
-    """One LLM call that must return a JSON object. Returns None if it doesn't."""
+async def chat_json(
+    system: str, user: str, max_tokens: int = 800, timeout_s: float = 30, reasoning_effort: str | None = None
+) -> dict | None:
+    """One LLM call that must return a JSON object. Returns None if it doesn't.
+
+    asi1 reasons before answering; reasoning_effort="minimal" cuts long extractions from minutes to seconds.
+    """
     r = await client().chat.completions.create(
         model=MODEL,
         messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
         temperature=0,
         max_tokens=max_tokens,
+        timeout=timeout_s,
+        **({"reasoning_effort": reasoning_effort} if reasoning_effort else {}),
     )
     return extract_json(r.choices[0].message.content or "")
+
+
+async def chat_text(system: str, user: str, max_tokens: int = 400, timeout_s: float = 30) -> str:
+    """One short free-text reply (friendly notes, answering questions from given data)."""
+    r = await client().chat.completions.create(
+        model=MODEL,
+        messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+        max_tokens=max_tokens,
+        timeout=timeout_s,
+        reasoning_effort="minimal",
+    )
+    return (r.choices[0].message.content or "").strip()

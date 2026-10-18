@@ -60,7 +60,7 @@ def _ranked_from_state(st: dict) -> List[RankedQuote]:
 
 
 def make_negotiator(**agent_kwargs) -> Agent:
-    agent = Agent(name="haggle-negotiator", seed=os.getenv("NEGOTIATOR_SEED", "haggle-negotiator-dev-seed"),
+    agent = Agent(name="haggle-negotiator", seed=os.getenv("NEGOTIATOR_SEED") or "haggle-negotiator-dev-seed",
                   **agent_kwargs)
     proto = Protocol(name="HaggleNegotiator", version="0.1.0")
 
@@ -88,7 +88,8 @@ def make_negotiator(**agent_kwargs) -> Agent:
             results = await asyncio.gather(*(ask(v) for v in msg.vendors))
             for v, reply, status in results:
                 if isinstance(reply, Quote):
-                    st["quotes"][v.vendor_id] = reply.json()
+                    # Key and label quotes by the vendor_id the Concierge sent, whatever the vendor calls itself.
+                    st["quotes"][v.vendor_id] = reply.copy(update={"vendor_id": v.vendor_id}).json()
                 elif isinstance(reply, Decline):
                     st["declined"][v.vendor_id] = reply.reason
                 else:
@@ -126,10 +127,11 @@ def make_negotiator(**agent_kwargs) -> Agent:
 
         target = msg.target_usd or pick_target(current, st["rfq"]["budget_usd"])
         counter = Counter(rfq_id=msg.rfq_id, vendor_id=msg.vendor_id, target_usd=target,
-                          round=current.round + 1, trace=msg.trace)
+                          round=current.round + 1, version=st["rfq"]["version"], trace=msg.trace)
         reply, _ = await ctx.send_and_receive(st["vendors"][msg.vendor_id]["address"], counter,
                                               response_type={Quote, Decline}, timeout=QUOTE_TIMEOUT_S)
         if isinstance(reply, Quote):
+            reply = reply.copy(update={"vendor_id": msg.vendor_id})
             st["quotes"][msg.vendor_id] = reply.json()
             ctx.storage.set(key, st)
             ctx.logger.info(f"{msg.rfq_id} {msg.vendor_id}: ${current.total_usd} -> ${reply.total_usd} "
@@ -139,7 +141,55 @@ def make_negotiator(**agent_kwargs) -> Agent:
             reason = reply.reason if isinstance(reply, Decline) else f"no reply in {QUOTE_TIMEOUT_S}s"
             await ctx.send(sender, result(current, reason))
 
+    def _vendor_state(ctx: Context, sender: str, rfq_id: str, version: int):
+        """The negotiation state and our vendor_id for a vendor's later (unsolicited) message."""
+        key = f"neg:{rfq_id}:v{version}"
+        st = ctx.storage.get(key)
+        if not st:
+            return None, None, None
+        vid = next((v for v, ref in st["vendors"].items() if ref["address"] == sender), None)
+        return key, st, vid
+
+    async def _forward(ctx: Context, st: dict, vid: str, quote: Optional[Quote], reason: str = "") -> None:
+        await ctx.send(st["sender"], CounterResult(
+            rfq_id=st["rfq"]["rfq_id"], vendor_id=vid, quote=quote, declined_reason=reason,
+            ranked=_ranked_from_state(st), trace=st["rfq"].get("trace", "")))
+
+    # A claimed vendor answers later once its owner decides (approve / counter / decline / expired).
+    vendor_updates = Protocol(name="HaggleNegotiatorVendorUpdates", version="0.1.0")
+
+    @vendor_updates.on_message(Quote)
+    async def on_vendor_quote(ctx: Context, sender: str, q: Quote):
+        key, st, vid = _vendor_state(ctx, sender, q.rfq_id, q.version)
+        if not st or not vid:
+            ctx.logger.warning(f"{q.rfq_id}: unsolicited quote from unknown vendor {sender[:16]}")
+            return
+        q = q.copy(update={"vendor_id": vid})
+        st["quotes"][vid] = q.json()
+        st["declined"].pop(vid, None)
+        ctx.storage.set(key, st)
+        ctx.logger.info(f"{q.rfq_id} {vid}: owner decision -> ${q.total_usd} ({q.status})")
+        await _forward(ctx, st, vid, q)
+
+    @vendor_updates.on_message(Decline)
+    async def on_vendor_decline(ctx: Context, sender: str, d: Decline):
+        key, st, vid = _vendor_state(ctx, sender, d.rfq_id, d.version)
+        if not st or not vid:
+            return
+        current = Quote.parse_raw(st["quotes"][vid]) if vid in st["quotes"] else None
+        if current and current.status == "needs_approval":
+            # The owner said no to the change: the earlier price stands.
+            current = current.copy(update={"status": "quoted", "note": d.reason})
+            st["quotes"][vid] = current.json()
+        else:
+            st["quotes"].pop(vid, None)
+            st["declined"][vid] = d.reason
+        ctx.storage.set(key, st)
+        ctx.logger.info(f"{d.rfq_id} {vid}: owner decision -> declined ({d.reason})")
+        await _forward(ctx, st, vid, current, d.reason)
+
     agent.include(proto, publish_manifest=True)
+    agent.include(vendor_updates)
     return agent
 
 

@@ -19,6 +19,10 @@ class RFQ(Model):
     budget_usd: float = 0.0
     dietary: Dict[str, int] = {}  # e.g. {"vegetarian": 10, "halal": 3}
     allergies: List[str] = []  # explicit; empty list means "none" was confirmed
+    category: str = "catering"
+    lat: Optional[float] = None  # venue
+    lng: Optional[float] = None
+    extras: List[str] = []  # e.g. ["drinks", "dessert", "plates"]
     trace: str = ""
 
 
@@ -44,6 +48,10 @@ class Quote(Model):
     round: int = 0
     status: str = "quoted"  # quoted | accepted | countered | needs_approval
     note: str = ""
+    version: int = 1
+    dietary_ok: bool = True  # every dietary group and allergy can be served
+    conflicts: List[str] = []  # what can't be served, e.g. "no halal items"
+    expires_in_s: int = 0  # 0 = no expiry given
     trace: str = ""
 
 
@@ -53,6 +61,8 @@ class Counter(Model):
     vendor_id: str
     target_usd: float
     round: int = 1
+    version: int = 1
+    reason: str = ""
     trace: str = ""
 
 
@@ -60,6 +70,8 @@ class Accept(Model):
     rfq_id: str
     vendor_id: str
     final_usd: float
+    version: int = 1
+    deposit_txn: str = ""
     trace: str = ""
 
 
@@ -68,6 +80,7 @@ class Decline(Model):
     rfq_id: str
     vendor_id: str
     reason: str
+    version: int = 1
     trace: str = ""
 
 
@@ -129,6 +142,29 @@ class ApprovalRequest(Model):
     trace: str = ""
 
 
+class PendingApproval(Model):
+    """A request waiting on the owner (stored by the vendor agent; the Negotiator sees Quote status "needs_approval")."""
+    rfq_id: str
+    vendor_id: str
+    summary: str
+    proposed_usd: float
+    deadline_iso: str
+    approval_id: str = ""
+    trace: str = ""
+
+
+class OwnerReply(Model):
+    """POST /owner-reply on a vendor agent (from the Photon bridge): the owner's YES / NO / price."""
+    vendor_id: str
+    approval_id: str
+    text: str
+
+
+class OwnerReplyResult(Model):
+    ok: bool
+    detail: str = ""
+
+
 class ApprovalDecision(Model):
     rfq_id: str
     vendor_id: str
@@ -140,8 +176,10 @@ class ApprovalDecision(Model):
 # Vendor Agent Factory onboarding
 class OnboardRequest(Model):
     business_name: str
-    website: str = ""
+    website: str = ""  # menu page URL
     place_id: str = ""
+    phone: str = ""
+    email: str = ""
     trace: str = ""
 
 
@@ -149,8 +187,10 @@ class OnboardResult(Model):
     vendor_id: str
     agent_address: str
     claimed: bool = False
-    menu_items: int = 0
+    menu_items: int = 0  # item count
     error: str = ""
+    status: str = "live"  # live (menu extracted) | estimated (agent live, no usable menu) | failed
+    message: str = ""
     trace: str = ""
 
 

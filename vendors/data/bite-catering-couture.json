@@ -1,0 +1,27 @@
+{
+  "name": "Bite Catering Couture",
+  "slug": "bite-catering-couture",
+  "source_url": "https://www.bitecatering.net/?utm_source=gmb&utm_medium=organic",
+  "place_id": "ChIJZ4BixBC7woARClLIzMF2aMU",
+  "phone": "(310) 401-3397",
+  "email": "",
+  "address": "",
+  "lat": null,
+  "lng": null,
+  "items": [],
+  "claimed": false,
+  "owner_contact": null,
+  "rules": {
+    "floor_discount_pct": 12.0,
+    "min_headcount": 10,
+    "max_headcount": 200,
+    "lead_time_hours": 48,
+    "delivery_radius_mi": 10.0,
+    "blackout_dates": [],
+    "auto_approve_limit_usd": 2000.0,
+    "delivery_fee_usd": 0.0
+  },
+  "extraction_status": "estimated",
+  "extracted_at": "2026-10-18T02:24:03.483102+00:00",
+  "rating": null
+}

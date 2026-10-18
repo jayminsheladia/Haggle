@@ -4,6 +4,8 @@ Owner: Person C
 """
 import os
 import uuid
+from collections.abc import Iterator
+from contextlib import contextmanager
 
 import sentry_sdk
 
@@ -27,3 +29,25 @@ def tag(trace: str, rfq_id: str = "", vendor_id: str = "") -> None:
         sentry_sdk.set_tag("rfq_id", rfq_id)
     if vendor_id:
         sentry_sdk.set_tag("vendor_id", vendor_id)
+
+
+@contextmanager
+def span(op: str, description: str, trace: str = "", **tags: str) -> Iterator[None]:
+    """A Sentry span around one step. Sentry problems are swallowed: they never block a request."""
+    try:
+        cm = sentry_sdk.start_span(op=op, name=description)
+        cm.__enter__()
+        if trace:
+            cm.set_tag("trace", trace)
+        for k, v in tags.items():
+            cm.set_tag(k, v)
+    except Exception:
+        cm = None
+    try:
+        yield
+    finally:
+        if cm is not None:
+            try:
+                cm.__exit__(None, None, None)
+            except Exception:
+                pass

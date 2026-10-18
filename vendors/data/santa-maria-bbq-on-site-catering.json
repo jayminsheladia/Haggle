@@ -1,0 +1,27 @@
+{
+  "name": "Santa Maria BBQ On Site Catering",
+  "slug": "santa-maria-bbq-on-site-catering",
+  "source_url": "http://www.santamariabbq.com/",
+  "place_id": "ChIJD4NlXIe5woARyXSHmedA13Q",
+  "phone": "(310) 559-5709",
+  "email": "",
+  "address": "",
+  "lat": null,
+  "lng": null,
+  "items": [],
+  "claimed": false,
+  "owner_contact": null,
+  "rules": {
+    "floor_discount_pct": 12.0,
+    "min_headcount": 10,
+    "max_headcount": 200,
+    "lead_time_hours": 48,
+    "delivery_radius_mi": 10.0,
+    "blackout_dates": [],
+    "auto_approve_limit_usd": 2000.0,
+    "delivery_fee_usd": 0.0
+  },
+  "extraction_status": "estimated",
+  "extracted_at": "2026-10-18T02:24:05.197083+00:00",
+  "rating": null
+}

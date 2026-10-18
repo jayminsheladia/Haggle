@@ -8,7 +8,7 @@ Owner: Person A
 import json
 import os
 import re
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from uuid import uuid4
 from zoneinfo import ZoneInfo
@@ -29,8 +29,9 @@ from shared.cards import (
 from shared.llm import chat_json
 from shared.models import (
     RFQ, CounterRequest, CounterResult, DiscoveryRequest, DiscoveryResult, NegotiationRequest,
-    NegotiationResult, Quote, VendorRef,
+    NegotiationResult, OnboardRequest, OnboardResult, Quote, VendorRef,
 )
+from shared.menu_schema import slugify
 from shared.selection import parse_selection
 
 load_dotenv()
@@ -43,7 +44,8 @@ DISCOVERY_ADDRESS = os.getenv(
 NEGOTIATOR_ADDRESS = os.getenv(
     "NEGOTIATOR_ADDRESS", "agent1qwv99f5t6fyjgyjemmdsnluzmayarx8z4v40ytx0df0njqffl4vy6hdgj2z"
 )
-VENDOR_AGENT_PREFIX = "haggle-vendor-"  # vendors/template.py names every vendor agent this way
+FACTORY_ADDRESS = os.getenv("FACTORY_ADDRESS", "")
+ONBOARD_TIMEOUT_S = 75  # the Factory reads menus in parallel; usually well under a minute
 
 # ---- Intake checklist ------------------------------------------------------
 # status: missing | needs_confirm | filled | offer | declined
@@ -428,16 +430,14 @@ discovery = Protocol(name="HaggleDiscoveryClient", version="0.1.0")
 
 
 def vendor_entry(v) -> dict:
-    """VendorInfo -> what the session keeps. Agent vendors use the vendor's own vendor_id."""
+    """VendorInfo -> what the session keeps. vendor_id is the vendor agent's name: the business's slug."""
     d = v.dict()
-    if v.agent_address:
-        if v.name.startswith(VENDOR_AGENT_PREFIX):
-            vid = v.name[len(VENDOR_AGENT_PREFIX):]
-            name = vid.replace("-", " ").title()
-        else:
-            vid, name = v.agent_address, v.name
+    if v.agent_address and v.name.startswith("agent1"):
+        vid, name = v.agent_address, "Haggle vendor agent"  # search had no name for this agent
+    elif v.agent_address:
+        vid, name = v.name, v.name.replace("-", " ").title()  # vendor agents are named by slug
     else:
-        vid, name = v.place_id or re.sub(r"\W+", "-", v.name.lower()), v.name
+        vid, name = slugify(v.name), v.name  # the slug the Factory will give its agent
     meta = []
     if v.rating is not None:
         meta.append(f"★ {v.rating}" + (f" ({v.rating_count})" if v.rating_count else ""))
@@ -448,12 +448,25 @@ def vendor_entry(v) -> dict:
     return d
 
 
+def merge_vendors(entries: list[dict]) -> list[dict]:
+    """One entry per vendor_id: a Places listing and its agent from Agentverse search become one."""
+    merged: dict[str, dict] = {}
+    for e in entries:
+        old = merged.get(e["vendor_id"])
+        if not old:
+            merged[e["vendor_id"]] = e
+            continue
+        agent, places = (old, e) if old["live"] else (e, old)
+        merged[e["vendor_id"]] = {**places, "agent_address": agent["agent_address"], "live": True}
+    return list(merged.values())
+
+
 async def send_picker(ctx: Context, user: str, s: dict) -> None:
     vendors = s["vendors"]
     live = sum(v["live"] for v in vendors)
     loc = s["location"]["resolved"]
-    note = (f"{live} of them can quote live right now." if live
-            else "None of them has a Haggle agent yet, so live quotes aren't available for these.")
+    note = (f"{live} already have a Haggle agent; for the others I'll read their public menus and get estimates."
+            if live else "I'll read their public menus and get estimates from them.")
     await ctx.send(user, card_message(
         f"I found {len(vendors)} caterers near {loc}. {note} Pick the ones you want quotes from.",
         "custom",
@@ -506,12 +519,7 @@ async def on_discovery_result(ctx: Context, sender: str, result: DiscoveryResult
         return
 
     s["location"] = {"resolved": result.resolved_location, "lat": result.lat, "lng": result.lng}
-    seen, vendors = set(), []
-    for v in result.vendors:
-        e = vendor_entry(v)
-        if e["vendor_id"] not in seen:
-            seen.add(e["vendor_id"])
-            vendors.append(e)
+    vendors = merge_vendors([vendor_entry(v) for v in result.vendors])
     s["vendors"] = vendors
     s["stage"] = "picking"
     ctx.storage.set(user, s)
@@ -524,16 +532,19 @@ async def on_discovery_result(ctx: Context, sender: str, result: DiscoveryResult
         ))
 
 
-# ---- Picker -> Negotiator --------------------------------------------------
+# ---- Picker -> Factory -> Negotiator ------------------------------------
 
 def build_rfq(s: dict) -> RFQ:
     cl = s["checklist"]
+    loc = s.get("location", {})
     return RFQ(
         rfq_id=s["rfq_id"],
         version=s["version"],
         event_date=cl["date"]["value"],
         event_time=cl["time"]["value"],
-        location=s.get("location", {}).get("resolved") or cl["location"]["value"],
+        location=loc.get("resolved") or cl["location"]["value"],
+        lat=loc.get("lat"),
+        lng=loc.get("lng"),
         headcount=cl["headcount"]["value"],
         budget_usd=cl["budget_usd"]["value"] or 0.0,  # 0 = no fixed budget
         dietary=cl["dietary"]["value"],
@@ -557,40 +568,143 @@ async def pick_vendors(ctx: Context, user: str, s: dict, sel: dict, text: str) -
         return
 
     chosen = [vendors[i] for i in idx]
-    live = [v for v in chosen if v["live"]]
-    offline = [v for v in chosen if not v["live"]]
-    lines = []
-    if offline:
-        names = ", ".join(v["display_name"] for v in offline[:3]) + (" and others" if len(offline) > 3 else "")
-        lines.append(f"{len(offline)} of your picks ({names}) don't have a Haggle agent yet. "
-                     "Quote requests by email aren't switched on yet, so I've skipped them for now.")
-    if not live:
-        lines.append("None of the caterers you picked can quote live yet.")
-        await ctx.send(user, text_message(" ".join(lines)))
-        return
-
-    shortlist = sorted(v["vendor_id"] for v in live)
+    shortlist = sorted(v["vendor_id"] for v in chosen)
     if s.get("shortlist") == shortlist:
-        # Same picks again (double click or replay): never re-send the RFQs.
+        # Same picks again (double click or replay): never re-send anything.
         if s.get("quotes"):
             await send_carousel(ctx, user, s, "Here are your quotes.")
         else:
-            await ctx.send(user, text_message("Still collecting quotes from those caterers."))
+            await ctx.send(user, text_message("Still working on quotes from those caterers."))
         return
     if s.get("shortlist"):
         s["version"] += 1  # a new shortlist is a new round of quotes
-    for k in ("quotes", "ranked", "fits", "declined", "list_prices", "countering"):
+    for k in ("quotes", "ranked", "fits", "declined", "list_prices", "countering", "onboarding", "onboard_failed"):
         s.pop(k, None)
     s["shortlist"] = shortlist
-    s["stage"] = "quoting"
-
-    refs = [VendorRef(vendor_id=v["vendor_id"], name=v["display_name"], address=v["agent_address"],
-                      distance_mi=v["distance_mi"], rating=v["rating"]) for v in live]
     ctx.storage.set(f"rfq:{s['rfq_id']}", user)
+
+    offline = [v for v in chosen if not v["live"]]
+    if not offline:
+        await start_negotiation(ctx, user, s)
+        return
+
+    # Caterers without an agent go to the Factory first; quotes start when their agents are live.
+    s["stage"] = "onboarding"
+    s["onboarding"] = {v["vendor_id"]: "pending" for v in offline}
+    s["onboard_deadline"] = (datetime.now(timezone.utc) + timedelta(seconds=ONBOARD_TIMEOUT_S)).isoformat()
+    for v in offline:
+        waiting = ctx.storage.get(f"onboard:{v['vendor_id']}") or []
+        ctx.storage.set(f"onboard:{v['vendor_id']}", sorted(set(waiting) | {user}))
+        await ctx.send(FACTORY_ADDRESS, OnboardRequest(
+            business_name=v["display_name"], website=v.get("website", ""), place_id=v.get("place_id", ""),
+            phone=v.get("phone", ""), trace=s["trace"]))
+    users = ctx.storage.get("onboarding_users") or []
+    ctx.storage.set("onboarding_users", sorted(set(users) | {user}))
+    ctx.logger.info(f"[{s['rfq_id']}] onboarding {list(s['onboarding'])}")
+    n = len(offline)
+    await ctx.send(user, text_message(
+        f"Setting up {n} caterer{'s' if n > 1 else ''} that {'don’t' if n > 1 else 'doesn’t'} have a Haggle agent yet: "
+        "reading their public menus. This takes up to a minute, then I'll get quotes from everyone you picked."))
+
+
+def dedupe_by_address(s: dict) -> None:
+    """A business onboarded just now may also have come back from Agentverse search under its address:
+    keep the entry with the Places details."""
+    keep: dict[str, dict] = {}
+    for v in s["vendors"]:
+        addr = v.get("agent_address")
+        if not addr:
+            keep[v["vendor_id"]] = v
+            continue
+        other = next((k for k, o in keep.items() if o.get("agent_address") == addr), None)
+        if other is None:
+            keep[v["vendor_id"]] = v
+        elif v.get("place_id") and not keep[other].get("place_id"):
+            del keep[other]
+            keep[v["vendor_id"]] = v
+            if other in s["shortlist"]:
+                s["shortlist"] = sorted((set(s["shortlist"]) - {other}) | {v["vendor_id"]})
+    s["vendors"] = list(keep.values())
+    s["shortlist"] = [vid for vid in s["shortlist"] if vid in keep]
+
+
+async def start_negotiation(ctx: Context, user: str, s: dict) -> None:
+    """Send the RFQ to every shortlisted vendor that has a live agent."""
+    s.pop("onboarding", None)
+    dedupe_by_address(s)
+    live = [v for v in s["vendors"] if v["vendor_id"] in s["shortlist"] and v["live"]]
+    failed = s.get("onboard_failed", {})
+    lines = []
+    if failed:
+        names = ", ".join(_vendor(s, vid).get("display_name", vid) for vid in failed)
+        lines.append(f"I couldn't set up {names}, so I've skipped {'them' if len(failed) > 1 else 'it'}.")
+    if not live:
+        s["stage"] = "picking"
+        lines.append("None of the caterers you picked can quote right now. Pick others, or say \"start over\".")
+        await ctx.send(user, text_message(" ".join(lines)))
+        return
+    s["stage"] = "quoting"
+    refs = [VendorRef(vendor_id=v["vendor_id"], name=v["display_name"], address=v["agent_address"],
+                      distance_mi=v["distance_mi"], claimed=v.get("claimed", False), rating=v["rating"])
+            for v in live]
     await ctx.send(NEGOTIATOR_ADDRESS, NegotiationRequest(rfq=build_rfq(s), vendors=refs, trace=s["trace"]))
-    ctx.logger.info(f"[{s['rfq_id']}] v{s['version']} negotiation request for {shortlist}")
+    ctx.logger.info(f"[{s['rfq_id']}] v{s['version']} negotiation request for {[r.vendor_id for r in refs]}")
     lines.append(f"Asking {len(live)} caterer{'s' if len(live) > 1 else ''} for quotes. This takes up to 10 seconds.")
     await ctx.send(user, text_message(" ".join(lines)))
+
+
+# ---- Factory onboarding ----------------------------------------------------
+
+onboarding = Protocol(name="HaggleFactoryClient", version="0.1.0")
+
+
+@onboarding.on_message(OnboardResult)
+async def on_onboard_result(ctx: Context, sender: str, result: OnboardResult):
+    if sender != FACTORY_ADDRESS:
+        ctx.logger.warning(f"Ignoring OnboardResult from unknown sender {sender}")
+        return
+    observability.tag(result.trace, vendor_id=result.vendor_id)
+    vid = result.vendor_id
+    ctx.logger.info(f"[{vid}] onboarded: {result.status} {result.agent_address or result.message}")
+    users = ctx.storage.get(f"onboard:{vid}") or []
+    ctx.storage.set(f"onboard:{vid}", [])
+    for user in users:
+        s = ctx.storage.get(user)
+        if not s or s.get("stage") != "onboarding" or vid not in s.get("onboarding", {}):
+            continue
+        if result.agent_address:
+            for v in s["vendors"]:
+                if v["vendor_id"] == vid:
+                    v.update(agent_address=result.agent_address, live=True, claimed=result.claimed)
+            s["onboarding"][vid] = "done"
+        else:
+            s["onboarding"][vid] = "failed"
+            s.setdefault("onboard_failed", {})[vid] = result.message or result.error
+        if "pending" not in s["onboarding"].values():
+            await start_negotiation(ctx, user, s)
+        ctx.storage.set(user, s)
+
+
+@agent.on_interval(period=5)
+async def onboarding_timeouts(ctx: Context):
+    """Don't wait forever on the Factory: after ONBOARD_TIMEOUT_S, quote whoever is ready."""
+    users = ctx.storage.get("onboarding_users") or []
+    if not users:
+        return
+    still = []
+    for user in users:
+        s = ctx.storage.get(user)
+        if not s or s.get("stage") != "onboarding":
+            continue
+        if datetime.fromisoformat(s["onboard_deadline"]) > datetime.now(timezone.utc):
+            still.append(user)
+            continue
+        for vid, state in s["onboarding"].items():
+            if state == "pending":
+                s.setdefault("onboard_failed", {})[vid] = "timed out"
+        await start_negotiation(ctx, user, s)
+        ctx.storage.set(user, s)
+    ctx.storage.set("onboarding_users", still)
 
 
 # ---- Quotes carousel, detail, counter -------------------------------------
@@ -603,7 +717,7 @@ def _vendor(s: dict, vid: str) -> dict:
 
 
 def _store_ranked(s: dict, ranked) -> None:
-    s["ranked"], s["fits"] = [], {}
+    s["quotes"], s["ranked"], s["fits"] = {}, [], {}
     for r in ranked:
         vid = r.quote.vendor_id
         s["quotes"][vid] = json.loads(r.quote.json())
@@ -628,8 +742,8 @@ def quote_view(s: dict, vid: str) -> dict:
     saved = s["list_prices"].get(vid, q["total_usd"]) - q["total_usd"]
     if saved >= 0.01:
         badges.append((f"Negotiated −{usd(saved)}", "success"))
-    if s["checklist"]["dietary"]["value"]:
-        badges.append(("Fits all diets", "info"))  # vendors decline when a diet can't be met
+    if s["checklist"]["dietary"]["value"] or s["checklist"]["allergies"]["value"]:
+        badges.append(("Fits all diets", "info") if q.get("dietary_ok", True) else ("Diets to confirm", "warning"))
     if not s["fits"].get(vid, True):
         badges.append(("Over budget", "warning"))
     if q["estimate"]:
@@ -675,7 +789,10 @@ def detail_rows(s: dict, vid: str) -> list[tuple[str, str]]:
         rows.append(("Rating", f"★ {v['rating']} ({v.get('rating_count') or 0} reviews)"))
     if v.get("source") == "places":
         rows.append(("Distance", f"{v['distance_mi']} mi"))
-    rows.append(("Status", "Estimate · not confirmed" if q["estimate"] else "Confirmed quote"))
+    if q.get("conflicts"):
+        rows.append(("Can't confirm", "; ".join(q["conflicts"])))
+    rows.append(("Status", "Estimate · not confirmed" if q["estimate"]
+                 else "Waiting on owner approval" if q["status"] == "needs_approval" else "Confirmed quote"))
     if q["note"]:
         rows.append(("Note", q["note"]))
     return rows
@@ -706,7 +823,8 @@ async def quote_action(ctx: Context, user: str, s: dict, action: str, sel: dict,
         return
     if not can_negotiate(q):
         reason = ("it's an estimate from an unclaimed caterer, so there's nothing to negotiate yet"
-                  if q["estimate"] else "this caterer has already given its best price")
+                  if q["estimate"] else "the owner is still deciding on the last offer"
+                  if q["status"] == "needs_approval" else "this caterer has already given its best price")
         await ctx.send(user, text_message(f"I can't negotiate with {q['vendor_name']}: {reason}."))
         return
     s["countering"] = vid
@@ -758,29 +876,40 @@ async def on_counter_result(ctx: Context, sender: str, result: CounterResult):
     s.pop("countering", None)
     vid = result.vendor_id
     name = s["quotes"][vid]["vendor_name"]
-    before = s["quotes"][vid]["total_usd"]
-    if result.ranked:
+    before, was = s["quotes"][vid]["total_usd"], s["quotes"][vid]["status"]
+    if result.ranked or not result.quote:
         _store_ranked(s, result.ranked)
-    elif result.quote:
+    else:
         s["quotes"][vid] = json.loads(result.quote.json())
-    after = s["quotes"][vid]["total_usd"]
-    ctx.logger.info(f"[{result.rfq_id}] counter {vid}: {before} -> {after} {result.declined_reason}")
+    after = s["quotes"].get(vid, {}).get("total_usd", before)
+    status = s["quotes"].get(vid, {}).get("status", "declined")
+    ctx.logger.info(f"[{result.rfq_id}] counter {vid}: {before} -> {after} {status} {result.declined_reason}")
 
-    if after < before:
+    if status == "needs_approval":
+        narration = f"{name} is checking with the owner. I'll update you as soon as they answer."
+    elif was == "needs_approval" and status != "declined":
+        narration = (f"The owner of {name} answered: {usd(after)}"
+                     + (f" (was {usd(before)})." if after != before else ".")
+                     + (f" {result.declined_reason}." if result.declined_reason else ""))
+    elif after < before:
         narration = f"{name} came down from {usd(before)} to {usd(after)}."
-        if s["quotes"][vid]["status"] == "needs_approval":
-            narration += " The owner still has to approve this price."
-        elif s["quotes"][vid]["status"] == "accepted":
+        if status == "accepted":
             narration += " They accepted our offer."
+    elif status == "declined":
+        narration = f"{name} can't do this one" + (f": {result.declined_reason}." if result.declined_reason else ".")
     else:
         narration = f"{name} won't go lower" + (f": {result.declined_reason}." if result.declined_reason else ".")
     ctx.storage.set(user, s)
+    if not s["ranked"]:
+        await ctx.send(user, text_message(narration + " No quotes are left. Pick other caterers, or say \"start over\"."))
+        return
     await send_carousel(ctx, user, s, narration)
 
 
 agent.include(chat, publish_manifest=True)
 agent.include(discovery)
 agent.include(negotiation)
+agent.include(onboarding)
 
 if __name__ == "__main__":
     observability.init("concierge")
