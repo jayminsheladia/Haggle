@@ -43,11 +43,12 @@ def extract_json(text: str) -> dict | None:
 
 
 async def chat_json(
-    system: str, user: str, max_tokens: int = 800, timeout_s: float = 30, reasoning_effort: str | None = None
+    system: str, user: str | list, max_tokens: int = 800, timeout_s: float = 30, reasoning_effort: str | None = None
 ) -> dict | None:
     """One LLM call that must return a JSON object. Returns None if it doesn't.
 
     asi1 reasons before answering; reasoning_effort="minimal" cuts long extractions from minutes to seconds.
+    `user` can be OpenAI-style content parts, e.g. an image as a data URL (the API only accepts inline images).
     """
     r = await client().chat.completions.create(
         model=MODEL,

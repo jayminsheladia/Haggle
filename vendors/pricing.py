@@ -51,6 +51,7 @@ def _package(items: list[MenuItem]) -> str:
 
 
 UNLABELED = "options not labeled on the menu"
+MAIN_SHARE = 0.5
 
 
 def price_for(menu: VendorMenu, rfq: RFQ, unlabeled_ok: bool = False) -> tuple[float, list[LineItem], bool, list[str]]:
@@ -65,15 +66,20 @@ def price_for(menu: VendorMenu, rfq: RFQ, unlabeled_ok: bool = False) -> tuple[f
     if not menu.priced_items:
         return 0.0, [], False, ["no public menu prices"]  # never invent a price
     mains = [i for i in menu.priced_items if not _is_extra(i)]
+    # Cheap add-ons priced per person (a $2.50 side) would drag a meal's average down: a full meal is priced
+    # from items at least MAIN_SHARE of the most expensive one. Items labeled for a diet still count as-is.
+    top = max((i.price_per_person for i in mains), default=0)
+    meals = [i for i in mains if i.price_per_person >= MAIN_SHARE * top]
 
     # Allergies: drop items the menu marks as containing them; flag allergens the menu can't tell us about.
-    safe = mains
+    safe, safe_meals = mains, meals
     for allergy in rfq.allergies:
         tag = ALLERGEN_TAGS.get(allergy.strip().lower())
         if tag is None:
             conflicts.append(f"can't confirm {allergy}-free options")
             continue
         safe = [i for i in safe if tag not in i.dietary_tags]
+        safe_meals = [i for i in safe_meals if tag not in i.dietary_tags]
         if mains and not safe:
             conflicts.append(f"all items contain {allergy}")
 
@@ -84,10 +90,11 @@ def price_for(menu: VendorMenu, rfq: RFQ, unlabeled_ok: bool = False) -> tuple[f
 
     lines: list[LineItem] = []
     for group, n in groups.items():
-        fits = safe if group == "standard" else [i for i in safe if DIET_TAGS.get(group, {group}) & set(i.dietary_tags)]
+        fits = (safe_meals or safe) if group == "standard" else [
+            i for i in safe if DIET_TAGS.get(group, {group}) & set(i.dietary_tags)]
         if not fits and unlabeled_ok and safe:
             conflicts.append(f"{_label(group)} {UNLABELED}")
-            fits = safe
+            fits = safe_meals or safe
         if not fits:
             conflicts.append(f"no {_label(group)} items")
             continue

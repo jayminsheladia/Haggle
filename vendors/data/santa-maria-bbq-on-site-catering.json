@@ -1,14 +1,71 @@
 {
   "name": "Santa Maria BBQ On Site Catering",
   "slug": "santa-maria-bbq-on-site-catering",
-  "source_url": "http://www.santamariabbq.com/",
+  "source_url": "https://www.santamariabbq.com/_files/ugd/2aa4be_13f40684447b416a8c67c68f7a3037f5.pdf",
   "place_id": "ChIJD4NlXIe5woARyXSHmedA13Q",
   "phone": "(310) 559-5709",
   "email": "",
   "address": "",
   "lat": null,
   "lng": null,
-  "items": [],
+  "items": [
+    {
+      "name": "Traditional Menu",
+      "price_per_person": 28.0,
+      "description": "USDA Choice Tri-Tip Sirloin, Chicken, Buttery Toasted Garlic Bread, SM Style Beans, Potato Salad, Fresh Mild Salsa & BBQ Sauce. For 50 to 100 people, plus tax. Includes heavy duty disposable plates, utensils, napkins.",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Traditional Menu (100+ people)",
+      "price_per_person": 25.0,
+      "description": "USDA Choice Tri-Tip Sirloin, Chicken, Buttery Toasted Garlic Bread, SM Style Beans, Potato Salad, Fresh Mild Salsa & BBQ Sauce. For 100+ people, plus tax. Includes heavy duty disposable plates, utensils, napkins.",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Baby Back Pork Ribs",
+      "price_per_person": null,
+      "description": "Per rack. Additional menu item for on-site BBQ.",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Mac 'N Cheese",
+      "price_per_person": null,
+      "description": "Per pan.",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Grilled Veggies",
+      "price_per_person": 2.75,
+      "description": "Minimum order is 50 people.",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Mixed Garden Salad",
+      "price_per_person": 2.5,
+      "description": "Minimum order is 50 people.",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Coleslaw",
+      "price_per_person": 2.75,
+      "description": "Minimum order is 50 people.",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Beverages (Coke, Diet Coke, Sprite, Bottled Water)",
+      "price_per_person": null,
+      "description": "Includes ice & tubs.",
+      "dietary_tags": [],
+      "serves": null
+    }
+  ],
   "claimed": false,
   "owner_contact": null,
   "rules": {
@@ -21,8 +78,8 @@
     "auto_approve_limit_usd": 2000.0,
     "delivery_fee_usd": 0.0
   },
-  "extraction_status": "estimated",
-  "extracted_at": "2026-10-18T02:24:05.197083+00:00",
+  "extraction_status": "extracted",
+  "extracted_at": "2026-10-18T04:03:04.249146+00:00",
   "rating": null,
   "photo_url": "https://lh3.googleusercontent.com/grass-cs/AABkmLfnVas_eXn-fERmxJVfzJZa0rqgDjCTWY0yVW_WOUxwqVCQFxsQO3HsnmMVRXpAwMhxOFBPL5fP5sr-VJPgJ1JHZ9HjZ3x4WhpCGKo_kj0MfLWr52iuTYz3ef_I-zf0B2_ekZFa=s4800-w800"
 }

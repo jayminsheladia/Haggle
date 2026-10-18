@@ -37,6 +37,12 @@ class PriceFor(unittest.TestCase):
         self.assertEqual(by["halal"].per_head_usd, 16.0)
         self.assertEqual(total, 47 * 15 + 10 * 13 + 3 * 16)
 
+    def test_cheap_add_ons_dont_price_the_meal(self):
+        m = menu(items=[MenuItem(name="Tri-Tip Dinner", price_per_person=28), MenuItem(name="Chicken Dinner", price_per_person=25),
+                        MenuItem(name="Coleslaw", price_per_person=2.75), MenuItem(name="Garden Salad", price_per_person=2.5)])
+        _, lines, _, _ = price_for(m, rfq(headcount=10))
+        self.assertEqual(lines[0].per_head_usd, 26.5)
+
     def test_dietary_conflict(self):
         _, _, ok, conflicts = price_for(menu(), rfq(dietary={"kosher": 5}))
         self.assertFalse(ok)

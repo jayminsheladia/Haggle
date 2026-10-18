@@ -6,3 +6,5 @@ sentry-sdk
 stripe
 resend
 ics
+pypdfium2
+pillow

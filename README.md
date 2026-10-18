@@ -115,8 +115,9 @@ None in use. Evaluated as backups for finding menus, and rejected (CLAUDE.md req
 - "Tavily Search Agent" (`agent1qt5uffgp0l3h9mqed8zh8vy5vs374jl2f8y0mjjvqm44axqseejqzmzx9v8`): 17.7 s, returns a prose
   summary without page links (it confirmed Beverly Catering publishes no prices).
 
-Instead the Factory follows each site's own menu/catering links (and /catering, /menu) and keeps the page with the most
-prices; photos come from the site's preview image or Google Places.
+Instead the Factory follows each site's own menu/catering links and PDFs (and /catering, /menu), reads PDF pages and
+menu images with the ASI:One vision model (OCR), and keeps the page with the most prices; photos come from the site's
+preview image or Google Places.
 
 ## Test
 
