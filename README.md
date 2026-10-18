@@ -110,7 +110,7 @@ an email (team inbox during development) and the user sees the impact estimate (
 the user through the Concierge (`UserNotice`), and card replies come back as `UserReply`.
 
 To demo the check-in without waiting for the event, set `FOLLOWUP_DEMO_DELAY_S=60` (check in a minute after
-booking). `data/food_rescue_orgs.json` lists 5 real LA organizations with their sources; each is marked
+booking). `data/food_rescue_orgs.json` lists 5 real LA organizations with their sources, geocoded with Google Places (Place IDs included); each is marked
 `"verified": false` with notes on what to confirm by phone (build plan 3C asks for every entry to be verified). All
 of them are open weekdays only, so on weekends Haggle says plainly that nothing is open and suggests safe options.
 

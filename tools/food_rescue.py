@@ -6,7 +6,8 @@ data/food_rescue_orgs.json is a list of:
   {"org_id", "name", "address", "lat", "lng",
    "hours": {"mon": [["09:00", "17:00"]], ...},   # America/Los_Angeles; a missing day = closed
    "accepts": ["prepared", "packaged", "produce"], "email", "pickup": true|false, "source": "<url>",
-   optional: "pickup_min_lbs" (pickup only above this weight), "phone", "verified", "verify_notes"}
+   optional: "place_id" (Google Places), "pickup_min_lbs" (pickup only above this weight), "phone",
+   "verified", "verify_notes"}
 
 Owner: Person D
 """
