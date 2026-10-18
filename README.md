@@ -97,7 +97,7 @@ To (re)read the caterers in `vendors/sources.csv` into `vendors/data/`: `python 
 **Booking:** Book → review card → the Concierge sends a Payment Protocol `RequestPayment` (Stripe embedded checkout,
 test mode: card 4242 4242 4242 4242) → on `CommitPayment` the Booker verifies the payment with Stripe, sends `Accept` to
 the caterer (refunds if it declines), emails the confirmation with a calendar invite (.ics) and the order to the
-caterer, and texts the organizer via Photon when configured → `CompletePayment`. "Request a confirmed quote" on an
+caterer, and texts the organizer by iMessage through Photon's REST API (`PHOTON_PROJECT_ID`, `PHOTON_SENDER_ID` = our shared line's user id) → `CompletePayment`. With `STRIPE_MOCK_PAYMENTS=1` the deposit is a real Stripe test-mode charge on Stripe's test card instead of the checkout UI. "Request a confirmed quote" on an
 unclaimed caterer makes the Booker email it a quote request with a link to claim its agent. During development every
 email goes to `TEAM_INBOX_EMAIL` and texts only to `TEAM_PHONE` / `OWNER_TEST_PHONE`.
 

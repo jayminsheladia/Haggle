@@ -170,7 +170,8 @@ async def send_booking_messages(ctx: Context, b: BookingConfirmed) -> bool:
         try:
             with observability.span("photon.send", "booking text", b.trace, rfq_id=b.rfq_id):
                 await photon.send_text(phone, f"Haggle: you're booked with {b.vendor_name} on {b.event_date} "
-                                              f"{b.event_time} for {b.headcount} guests. Deposit paid: ${b.deposit_usd:,.2f}.")
+                                              f"{b.event_time} for {b.headcount} guests. Deposit paid: ${b.deposit_usd:,.2f}.",
+                                      idempotency_key=f"booking-{b.rfq_id}")
         except Exception as e:
             ctx.logger.warning(f"[{b.rfq_id}] Photon text not sent: {e}")
     return email_sent
