@@ -13,7 +13,7 @@ import re
 import time
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
-from uuid import uuid4
+from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
 from dotenv import load_dotenv
@@ -364,6 +364,7 @@ async def _on_chat(ctx: Context, sender: str, msg: ChatMessage):
         return
 
     s = ctx.storage.get(sender) or new_session()
+    s["chat_session"] = str(ctx.session)  # later messages to this user go in this conversation
     if text.lower().strip(" .!") in RESET_WORDS:
         s = new_session()
         ctx.storage.set(sender, s)
@@ -467,11 +468,20 @@ async def show_current(ctx: Context, user: str, s: dict) -> None:
         await ctx.send(user, text_message("Tell me about your event, or say \"start over\"."))
 
 
+def adopt_chat_session(ctx: Context, s: dict) -> None:
+    """Send the rest of this handler in the user's ASI:One conversation. ASI:One drops messages whose session isn't the
+    chat's, so anything sent later (another agent's answer, an owner's decision, the Stripe watcher, a reminder)
+    would otherwise never show. Agents we message from here answer in this session too."""
+    if s.get("chat_session"):
+        ctx._session = UUID(s["chat_session"])
+
+
 def _session_for(ctx: Context, rfq_id: str) -> tuple[str | None, dict | None]:
     user = ctx.storage.get(f"rfq:{rfq_id}")
     s = ctx.storage.get(user) if user else None
     if not s or s.get("rfq_id") != rfq_id:
         return None, None
+    adopt_chat_session(ctx, s)
     return user, s
 
 
@@ -762,6 +772,7 @@ async def on_onboard_result(ctx: Context, sender: str, result: OnboardResult):
         s = ctx.storage.get(user)
         if not s or s.get("stage") != "onboarding" or vid not in s.get("onboarding", {}):
             continue
+        adopt_chat_session(ctx, s)
         if result.agent_address:
             for v in s["vendors"]:
                 if v["vendor_id"] == vid:
@@ -786,6 +797,7 @@ async def onboarding_timeouts(ctx: Context):
         s = ctx.storage.get(user)
         if not s or s.get("stage") != "onboarding":
             continue
+        adopt_chat_session(ctx, s)
         if datetime.fromisoformat(s["onboard_deadline"]) > datetime.now(timezone.utc):
             still.append(user)
             continue
@@ -1124,6 +1136,24 @@ async def mock_deposit(ctx: Context, user: str, s: dict, q: dict, when: str) -> 
         f"payment {intent}). Confirming with {q['vendor_name']}..."))
 
 
+def booked_card(s: dict) -> ChatMessage:
+    b, cl = s["booking"], s["checklist"]
+    name = s["quotes"][b["vendor_id"]]["vendor_name"]
+    return card_message(
+        f"You're booked with {name}!" + (" A confirmation email with a calendar invite is on its way." if b.get("email_sent") else "")
+        + " I'll remind you the day before. When the event's over, just tell me (\"event over\") and I'll help "
+          "rescue any leftovers.",
+        "custom",
+        info_card("Booking confirmed", name, [
+            ("When", summary(cl).split(" · ")[0]),
+            ("Where", s.get("location", {}).get("resolved") or cl["location"]["value"]),
+            ("Guests", display("headcount", cl["headcount"]["value"])),
+            ("Total", usd(b["total_usd"])), ("Deposit paid", usd(b["deposit_usd"])),
+            ("Balance to the caterer", usd(round(b["total_usd"] - b["deposit_usd"], 2))),
+        ], [("Booked", "success"), ("Deposit paid", "success")] + ([("Stripe test mode", "warning")] if b.get("mock") else [])),
+        terminal=True)
+
+
 async def on_commit(ctx: Context, sender: str, msg: CommitPayment):
     s = ctx.storage.get(sender)
     b = (s or {}).get("booking") or {}
@@ -1132,11 +1162,16 @@ async def on_commit(ctx: Context, sender: str, msg: CommitPayment):
         ctx.logger.warning(f"CommitPayment {txn} from {sender[:16]} matches no open booking")
         await ctx.send(sender, CancelPayment(transaction_id=txn, reason="This payment doesn't match an open Haggle booking."))
         return
-    if b.get("paid"):  # replay
+    s["chat_session"] = str(ctx.session)  # ASI:One's payment reply comes in the chat's conversation
+    if b.get("paid"):  # already booked (the Stripe watcher was first, or a replay): answer it here
+        ctx.storage.set(sender, s)
         await ctx.send(sender, CompletePayment(transaction_id=txn))
+        await ctx.send(sender, booked_card(s))
         return
-    if b.get("committed") == txn:
-        return  # the Booker is already on it
+    if b.get("committed") == txn:  # the Booker is already on it; its result is sent in this conversation
+        ctx.storage.set(sender, s)
+        await ctx.send(sender, text_message("Payment received. Confirming your booking with the caterer..."))
+        return
     b["committed"] = txn
     ctx.storage.set(sender, s)
     await ctx.send(BOOKER_ADDRESS, booking_message(s, sender))
@@ -1215,6 +1250,7 @@ async def watch_checkouts(ctx: Context):
             b["committed"] = txn
             ctx.storage.set(user, s)
             ctx.logger.info(f"[{s['rfq_id']}] Stripe checkout {txn} paid -> Booker")
+            adopt_chat_session(ctx, s)  # so the Booker's answer, and our replies, land in the user's conversation
             await ctx.send(BOOKER_ADDRESS, booking_message(s, user))
             await ctx.send(user, text_message(f"Payment received on Stripe ✅ Confirming with "
                                               f"{s['quotes'][b['vendor_id']]['vendor_name']}..."))
@@ -1230,6 +1266,7 @@ async def expire_payment_requests(ctx: Context):
         if not b.get("requested_at") or b.get("committed") or b.get("paid"):
             continue
         if datetime.now(timezone.utc) - datetime.fromisoformat(b["requested_at"]) > timedelta(seconds=DEADLINE_S):
+            adopt_chat_session(ctx, s)
             await ctx.send(user, CancelPayment(transaction_id=b["checkout"]["checkout_session_id"],
                                                reason="The deposit wasn't paid in time."))
             b.pop("requested_at", None)
@@ -1254,6 +1291,7 @@ async def resend_lost_negotiation_requests(ctx: Context):
         if not s or s.get("stage") != "quoting" or not q:
             continue
         if time.time() - q["sent_at"] > QUOTE_RESEND_AFTER_S:
+            adopt_chat_session(ctx, s)
             if q["resent"] >= 2:
                 s.pop("quoting")
                 s.pop("shortlist", None)  # so tapping Get quotes with the same picks asks again
@@ -1286,35 +1324,21 @@ async def on_booking_result(ctx: Context, sender: str, result: BookingResult):
     ctx.logger.info(f"[{result.rfq_id}] booking {result.status}: {result.detail}")
 
     if result.status == "confirmed":
-        b["paid"], s["stage"] = True, "booked"
+        b["paid"], b["email_sent"], s["stage"] = True, result.email_sent, "booked"
         ctx.storage.set(user, s)
+        await ctx.send(FOLLOWUP_ADDRESS, event_booked(s))
         if not b.get("mock"):
             await ctx.send(user, CompletePayment(transaction_id=txn))
-        cl = s["checklist"]
-        await ctx.send(FOLLOWUP_ADDRESS, event_booked(s))
-        balance = usd(round(b["total_usd"] - b["deposit_usd"], 2))
-        await ctx.send(user, card_message(
-            f"You're booked with {name}!" + (" A confirmation email with a calendar invite is on its way." if result.email_sent else "")
-            + " I'll remind you the day before. When the event's over, just tell me (\"event over\") and I'll help "
-              "rescue any leftovers.",
-            "custom",
-            info_card("Booking confirmed", name, [
-                ("When", summary(cl).split(" · ")[0]),
-                ("Where", s.get("location", {}).get("resolved") or cl["location"]["value"]),
-                ("Guests", display("headcount", cl["headcount"]["value"])),
-                ("Total", usd(b["total_usd"])), ("Deposit paid", usd(b["deposit_usd"])),
-                ("Balance to the caterer", balance),
-            ], [("Booked", "success"), ("Deposit paid", "success")] + ([("Stripe test mode", "warning")] if b.get("mock") else [])),
-            terminal=True))
+        await ctx.send(user, booked_card(s))
         return
 
     if result.status == "vendor_declined":
-        if not b.get("mock"):
-            await ctx.send(user, CancelPayment(transaction_id=txn, reason=result.detail))
         s.pop("booking", None)
         s["refunded"] = s.get("refunded", 0) + 1  # the next booking takes a new deposit
         s["stage"] = "choosing"
         ctx.storage.set(user, s)
+        if not b.get("mock"):
+            await ctx.send(user, CancelPayment(transaction_id=txn, reason=result.detail))
         await send_carousel(ctx, user, s, f"Sorry: {result.detail}. Pick another caterer.")
         return
 
