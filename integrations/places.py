@@ -121,10 +121,12 @@ async def text_search(
     radius_mi: float,
     limit: int,
     client: httpx.AsyncClient,
+    with_photos: bool = True,
 ) -> list[dict]:
     """Places near (lat, lng): name, address, phone, rating, photo URL and Place ID.
 
     Results outside radius_mi are dropped, since locationBias alone can return far-away places.
+    with_photos=False skips the photo lookups (one billed request per place).
     """
     body = {
         "textQuery": query,
@@ -149,7 +151,10 @@ async def text_search(
             break
 
     photos = await asyncio.gather(
-        *(photo_url(p["photos"][0]["name"], client) if p.get("photos") else asyncio.sleep(0) for p, _, _ in places)
+        *(
+            photo_url(p["photos"][0]["name"], client) if with_photos and p.get("photos") else asyncio.sleep(0)
+            for p, _, _ in places
+        )
     )
     return [
         {
