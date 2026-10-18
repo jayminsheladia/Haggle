@@ -478,7 +478,8 @@ def merge_vendors(entries: list[dict]) -> list[dict]:
             continue
         agent, places = (old, e) if old["live"] else (e, old)
         merged[e["vendor_id"]] = {**places, "agent_address": agent["agent_address"], "live": True,
-                                  "claimed": agent.get("claimed", False)}
+                                  "claimed": agent.get("claimed", False),
+                                  "photo_url": places.get("photo_url") or agent.get("photo_url", "")}
     return list(merged.values())
 
 

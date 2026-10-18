@@ -109,7 +109,13 @@ Agent storage (sessions, approvals) lives in the container and resets on redeplo
 
 ## External agents
 
-None in use. Evaluated as backups for finding menus, and rejected (CLAUDE.md requires answers in ~5 s):
+- **Image Generator Agent** (`agent1q0utywlfr3dfrfkwk4fjmtdrfew0zh692untdlr877d6ay8ykwpewydmxtl`, OpenAI image model):
+  generates a food photo for vendors that have no photo of their own (the fictional demo vendors, or a business with
+  nothing on Google Places). Used offline by `python -m scripts.generate_photos` (90 s timeout per image); images are
+  saved to `assets/vendors/` and served from the public repo. Fallback: the vendor simply has no photo. Real businesses
+  always get their Google Places photo first.
+
+Not used in the live flow: Evaluated as backups for finding menus, and rejected (CLAUDE.md requires answers in ~5 s):
 - "Website Scraper Agent" (`agent1qwnjmzwwdq9rjs30y3qw988htrvte6lk2xaak9xg4kz0fsdz0t9ws4mwsgs`): blocked by the same
   sites (HTTP 403), 13.6 s.
 - "Tavily Search Agent" (`agent1qt5uffgp0l3h9mqed8zh8vy5vs374jl2f8y0mjjvqm44axqseejqzmzx9v8`): 17.7 s, returns a prose
