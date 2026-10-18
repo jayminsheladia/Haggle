@@ -247,3 +247,43 @@ def picker_carousel(rfq_id: str, location: str, vendors: list[dict]) -> dict:
     })
     return {"title": f"Caterers near {location}", "subtitle": "Swipe, tap Select on each one you want, then Get quotes",
             "items": items}
+
+
+def picker_grid(rfq_id: str, location: str, vendors: list[dict]) -> dict:
+    """Caterer picker as ONE compact card: a multi-select grid of small photo tiles (choice_grid, multi=true).
+    ASI:One stacks carousels and row groups vertically with full-width photos; the grid keeps every caterer on
+    screen at once. The drawer keeps the ticks, and "Get quotes" sends them together (selection["vendors"]).
+
+    vendors: [{"vendor_id", "name", "photo_url", "meta", "connected"}]
+    """
+    def label(v: dict) -> str:
+        status = "✓ Connected" if v["connected"] else "Not connected"
+        return " · ".join(x for x in (v["name"], v["meta"], status) if x)
+
+    def button(text: str, action: str, primary: bool = False) -> dict:
+        return {"type": "button", "label": text, "primary": primary,
+                "action": {"selection": {"action": action, "rfq_id": rfq_id, "vendor_id": ""}}}
+
+    return {
+        "root": {
+            "type": "section",
+            "title": f"Caterers near {location}",
+            "subtitle": "Tick every caterer you want quotes from, then Get quotes. Nobody is contacted until then.",
+            "children": [
+                {
+                    "type": "choice_grid",
+                    "name": "vendors",
+                    "multi": True,
+                    "choices": [
+                        {"value": v["vendor_id"], "label": label(v),
+                         **({"image": v["photo_url"]} if v["photo_url"] else {})}
+                        for v in vendors
+                    ],
+                },
+                {"type": "group", "direction": "row", "gap": 8, "children": [
+                    button("Get quotes", "select_vendors", primary=True),
+                    button("Quote all", "select_all"),
+                ]},
+            ],
+        }
+    }

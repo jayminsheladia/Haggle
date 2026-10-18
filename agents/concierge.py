@@ -25,7 +25,7 @@ from uagents_core.contrib.protocols.chat import (
 
 from shared import observability
 from shared.cards import (
-    DIETS, card_message, event_form, picker_carousel, quote_detail, quotes_carousel, review_card, text_message, usd,
+    DIETS, card_message, event_form, picker_grid, quote_detail, quotes_carousel, review_card, text_message, usd,
 )
 from shared.llm import chat_json
 from shared.models import (
@@ -491,10 +491,9 @@ async def send_picker(ctx: Context, user: str, s: dict) -> None:
     note = (f"{connected} {'are' if connected != 1 else 'is'} connected to Haggle and can negotiate; for the others "
             "I'll use their public menus." if connected else "I'll get estimates from their public menus.")
     await ctx.send(user, card_message(
-        f"I found {len(vendors)} caterers near {loc}. {note} Swipe through, tap Select on each one you want, "
-        "then swipe to the end and tap Get quotes.",
-        "carousel",
-        picker_carousel(
+        f"I found {len(vendors)} caterers near {loc}. {note} Tick the ones you want, then tap Get quotes.",
+        "custom",
+        picker_grid(
             s["rfq_id"], loc,
             [{"vendor_id": v["vendor_id"], "name": v["display_name"], "photo_url": v["photo_url"],
               "meta": v["meta"], "connected": v.get("claimed", False)} for v in vendors],
