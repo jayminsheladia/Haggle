@@ -17,6 +17,7 @@ from dotenv import load_dotenv
 from uagents import Agent, Context, Protocol
 
 from integrations import places
+from shared import observability
 from shared.models import DiscoveryRequest, DiscoveryResult, VendorInfo
 
 load_dotenv()
@@ -95,7 +96,7 @@ async def discover(req: DiscoveryRequest) -> DiscoveryResult:
         resolved_location=resolved,
         lat=lat,
         lng=lng,
-        error="; ".join(errors) or None,
+        error="; ".join(errors),
         trace=req.trace,
     )
 
@@ -123,6 +124,7 @@ async def on_startup(ctx: Context):
 
 @discovery.on_message(DiscoveryRequest, replies=DiscoveryResult)
 async def on_discovery_request(ctx: Context, sender: str, req: DiscoveryRequest):
+    observability.tag(req.trace, req.rfq_id)
     where = req.location or f"{req.lat},{req.lng}"
     ctx.logger.info(f"[{req.rfq_id}] {req.category} within {req.radius_mi} mi of {where}")
     result = await discover(req)
@@ -135,4 +137,5 @@ async def on_discovery_request(ctx: Context, sender: str, req: DiscoveryRequest)
 agent.include(discovery, publish_manifest=True)
 
 if __name__ == "__main__":
+    observability.init("discovery")
     agent.run()

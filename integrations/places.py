@@ -70,7 +70,7 @@ async def geocode(text: str, client: httpx.AsyncClient) -> dict | None:
     return {
         "lat": loc["latitude"],
         "lng": loc["longitude"],
-        "formatted_address": places[0].get("formattedAddress"),
+        "formatted_address": places[0].get("formattedAddress", text),
     }
 
 
@@ -132,12 +132,12 @@ async def text_search(
         {
             "place_id": p["id"],
             "name": p.get("displayName", {}).get("text", ""),
-            "address": p.get("formattedAddress"),
-            "phone": p.get("nationalPhoneNumber"),
-            "website": p.get("websiteUri"),
+            "address": p.get("formattedAddress", ""),
+            "phone": p.get("nationalPhoneNumber", ""),
+            "website": p.get("websiteUri", ""),
             "rating": p.get("rating"),
             "rating_count": p.get("userRatingCount"),
-            "photo_url": photo,
+            "photo_url": photo or "",
             "lat": loc["latitude"],
             "lng": loc["longitude"],
             "distance_mi": round(dist, 1),

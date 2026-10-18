@@ -3,45 +3,49 @@
 Owner: Person C
 """
 
+from typing import List, Optional
+
 from uagents import Model
 
 
 # ---- Discovery (Person B) ---------------------------------------------------
-# Concierge -> Discovery -> Concierge. Proposed in team chat; Person C owns this file.
+# Proposed in team chat; Person C owns this file.
 
 
 class DiscoveryRequest(Model):
+    """Concierge -> Discovery: find vendors near the venue."""
     rfq_id: str
     category: str = "catering"
-    location: str | None = None  # venue or address as the user wrote it; geocoded if lat/lng are missing
-    lat: float | None = None
-    lng: float | None = None
+    location: str = ""  # venue or address as the user wrote it; geocoded when lat/lng are missing
+    lat: Optional[float] = None
+    lng: Optional[float] = None
     radius_mi: float = 5.0
     limit: int = 10
-    trace: dict[str, str] | None = None
+    trace: str = ""
 
 
 class VendorInfo(Model):
     name: str
     source: str  # "places" or "agentverse"
-    place_id: str | None = None
-    agent_address: str | None = None  # set when the vendor already has an agent that speaks HaggleNegotiation
-    address: str | None = None
-    phone: str | None = None
-    website: str | None = None
-    rating: float | None = None
-    rating_count: int | None = None
-    photo_url: str | None = None
-    lat: float | None = None
-    lng: float | None = None
-    distance_mi: float | None = None
+    place_id: str = ""
+    agent_address: str = ""  # set when the vendor already has an agent that speaks HaggleNegotiation
+    address: str = ""
+    phone: str = ""
+    website: str = ""
+    rating: Optional[float] = None
+    rating_count: Optional[int] = None
+    photo_url: str = ""
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+    distance_mi: float = 0.0  # 0.0 for Agentverse vendors (no location yet)
 
 
 class DiscoveryResult(Model):
+    """Discovery -> Concierge. `error` is set when a source failed; `vendors` still holds what the others found."""
     rfq_id: str
-    vendors: list[VendorInfo]
-    resolved_location: str | None = None
-    lat: float | None = None
-    lng: float | None = None
-    error: str | None = None  # set when a source failed; vendors holds whatever the other sources found
-    trace: dict[str, str] | None = None
+    vendors: List[VendorInfo] = []
+    resolved_location: str = ""
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+    error: str = ""
+    trace: str = ""
