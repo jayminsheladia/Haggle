@@ -28,7 +28,7 @@ from uagents_core.contrib.protocols.payment import CancelPayment, CommitPayment,
 from integrations.stripe_client import charge_test_deposit, create_deposit_checkout, mock_payments, session_status
 from shared import observability
 from shared.cards import (
-    DIETS, card_message, event_form, picker_carousel, quote_detail, quotes_carousel, review_card, text_message, usd,
+    DIETS, card_message, event_form, picker_carousel, picker_slider, quote_detail, quotes_carousel, review_card, text_message, usd,
 )
 from shared.llm import chat_json
 from shared.models import (
@@ -52,6 +52,8 @@ NEGOTIATOR_ADDRESS = os.getenv(
 )
 FACTORY_ADDRESS = os.getenv("FACTORY_ADDRESS", "agent1qdzh8nw69qe2x0rw3tc7rg8ddt9e6lda8x7y6hqfjwfaldk2k7kzukj7rh5")
 BOOKER_ADDRESS = os.getenv("BOOKER_ADDRESS", "agent1qfq9dyy5q5t5dg7tzuhkuqztzqy9q806dw4qd8v6sg6znu87rmx8s3deu0f")
+# "checkbox" (one card, a Select checkbox per caterer; default) or "carousel" (swipeable, Select per card)
+PICKER_STYLE = os.getenv("PICKER_STYLE", "checkbox")
 ONBOARD_TIMEOUT_S = 75  # the Factory reads menus in parallel; usually well under a minute
 DEPOSIT_PCT = 0.20  # deposit taken at booking (build plan)
 NO_PRICES = "no public menu prices"
@@ -496,16 +498,17 @@ async def send_picker(ctx: Context, user: str, s: dict) -> None:
     connected = sum(bool(v.get("claimed")) for v in vendors)
     note = (f"{connected} {'are' if connected != 1 else 'is'} connected to Haggle and can negotiate; for the others "
             "I'll use their public menus." if connected else "I'll get estimates from their public menus.")
-    await ctx.send(user, card_message(
-        f"I found {len(vendors)} caterers near {loc}. {note} Swipe through, tap Select on each one you want, "
-        "then swipe to the end and tap Get quotes.",
-        "carousel",
-        picker_carousel(
-            s["rfq_id"], loc,
-            [{"vendor_id": v["vendor_id"], "name": v["display_name"], "photo_url": v["photo_url"],
-              "meta": v["meta"], "connected": v.get("claimed", False)} for v in vendors],
-        ),
-    ))
+    cards = [{"vendor_id": v["vendor_id"], "name": v["display_name"], "photo_url": v["photo_url"],
+              "meta": v["meta"], "connected": v.get("claimed", False)} for v in vendors]
+    if PICKER_STYLE == "carousel":  # swipeable cards, Select per card (one-line reply per tap)
+        await ctx.send(user, card_message(
+            f"I found {len(vendors)} caterers near {loc}. {note} Swipe through, tap Select on each one you want, "
+            "then swipe to the end and tap Get quotes.",
+            "carousel", picker_carousel(s["rfq_id"], loc, cards)))
+    else:  # one card, a Select checkbox per caterer and one Get quotes
+        await ctx.send(user, card_message(
+            f"I found {len(vendors)} caterers near {loc}. {note} Tick Select on each one you want, then tap Get quotes.",
+            "custom", picker_slider(s["rfq_id"], loc, cards)))
 
 
 async def toggle_vendor(ctx: Context, user: str, s: dict, sel: dict, text: str) -> None:
@@ -617,7 +620,8 @@ async def pick_vendors(ctx: Context, user: str, s: dict, sel: dict, text: str) -
                 picks = [x.strip() for x in picks.split(",")]
         picks = set(picks if isinstance(picks, list) else [picks])
         idx = [i for i, v in enumerate(vendors) if v["vendor_id"] in picks]
-        idx = idx or [i for i, v in enumerate(vendors) if v["vendor_id"] in s.get("picked", [])]
+        idx = idx or [i for i in range(len(vendors)) if _truthy(sel.get(f"pick_{i}"))]  # checkbox picker
+        idx = idx or [i for i, v in enumerate(vendors) if v["vendor_id"] in s.get("picked", [])]  # carousel picker
         if not idx:  # planner prose: "picked pick_0 and pick_3" or caterer names
             idx = sorted({int(m) for m in re.findall(r"\bpick_(\d+)\b", text) if int(m) < len(vendors)}
                          | {i for i, v in enumerate(vendors) if v["display_name"].lower() in text.lower()})
