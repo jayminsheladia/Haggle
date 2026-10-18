@@ -211,15 +211,26 @@ def review_card(rfq_id: str, vendor_id: str, title: str, rows: list[tuple[str, s
     }
 
 
-def picker_grid(rfq_id: str, location: str, vendors: list[dict]) -> dict:
-    """Caterer picker in ONE card: an image-tile grid where the user taps as many as they like (the drawer keeps
-    the picks), then "Get quotes" sends them all at once. Nothing is re-sent while picking.
+def picker_slider(rfq_id: str, location: str, vendors: list[dict]) -> dict:
+    """Caterer picker in ONE card: a horizontal row of caterer cards (swipe through them), each with a "Select"
+    checkbox the drawer keeps, then "Get quotes" sends every pick at once. Nothing is re-sent while picking.
 
-    vendors: [{"vendor_id", "name", "photo_url", "meta", "connected"}]
+    vendors: [{"vendor_id", "name", "photo_url", "meta", "connected"}]; checkbox i is named pick_<i>.
     """
-    def label(v: dict) -> str:
-        status = "✓ Connected" if v["connected"] else "Not connected"
-        return " · ".join(x for x in (v["name"], v["meta"], status) if x)
+    def card(i: int, v: dict) -> dict:
+        status = ({"type": "badge", "label": "Connected", "variant": "success"} if v["connected"]
+                  else {"type": "badge", "label": "Not connected", "variant": "info"})  # no grey variant in the spec
+        return {
+            "type": "section",
+            "title": v["name"],
+            "children": [
+                *([{"type": "image", "src": v["photo_url"], "alt": v["name"], "aspect_ratio": "4:3"}]
+                  if v["photo_url"] else []),
+                *([{"type": "text", "value": v["meta"], "style": "muted"}] if v["meta"] else []),
+                status,
+                {"type": "input", "name": f"pick_{i}", "kind": "checkbox", "label": "Select"},
+            ],
+        }
 
     def button(text: str, action: str, primary: bool = False) -> dict:
         return {"type": "button", "label": text, "primary": primary,
@@ -229,17 +240,9 @@ def picker_grid(rfq_id: str, location: str, vendors: list[dict]) -> dict:
         "root": {
             "type": "section",
             "title": f"Caterers near {location}",
-            "subtitle": "Tap every caterer you want quotes from, then Get quotes. Nobody is contacted until then.",
+            "subtitle": "Swipe through and tick every caterer you want quotes from, then Get quotes.",
             "children": [
-                {
-                    "type": "choice_grid",
-                    "name": "vendors",
-                    "multi": True,
-                    "choices": [
-                        {"value": v["vendor_id"], "label": label(v), **({"image": v["photo_url"]} if v["photo_url"] else {})}
-                        for v in vendors
-                    ],
-                },
+                {"type": "group", "direction": "row", "gap": 12, "children": [card(i, v) for i, v in enumerate(vendors)]},
                 {"type": "group", "direction": "row", "gap": 8, "children": [
                     button("Get quotes", "select_vendors", primary=True),
                     button("Quote all", "select_all"),

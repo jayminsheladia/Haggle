@@ -25,7 +25,7 @@ from uagents_core.contrib.protocols.chat import (
 
 from shared import observability
 from shared.cards import (
-    DIETS, card_message, event_form, picker_grid, quote_detail, quotes_carousel, review_card, text_message, usd,
+    DIETS, card_message, event_form, picker_slider, quote_detail, quotes_carousel, review_card, text_message, usd,
 )
 from shared.llm import chat_json
 from shared.models import (
@@ -487,9 +487,9 @@ async def send_picker(ctx: Context, user: str, s: dict) -> None:
     note = (f"{connected} {'are' if connected != 1 else 'is'} connected to Haggle and can negotiate; for the others "
             "I'll use their public menus." if connected else "I'll get estimates from their public menus.")
     await ctx.send(user, card_message(
-        f"I found {len(vendors)} caterers near {loc}. {note} Tap the ones you want quotes from, then Get quotes.",
+        f"I found {len(vendors)} caterers near {loc}. {note} Swipe through, tick the ones you want, then Get quotes.",
         "custom",
-        picker_grid(
+        picker_slider(
             s["rfq_id"], loc,
             [{"vendor_id": v["vendor_id"], "name": v["display_name"], "photo_url": v["photo_url"],
               "meta": v["meta"], "connected": v.get("claimed", False)} for v in vendors],
@@ -585,6 +585,7 @@ async def pick_vendors(ctx: Context, user: str, s: dict, sel: dict, text: str) -
                 picks = [x.strip() for x in picks.split(",")]
         picks = set(picks if isinstance(picks, list) else [picks])
         idx = [i for i, v in enumerate(vendors) if v["vendor_id"] in picks]
+        idx = idx or [i for i in range(len(vendors)) if _truthy(sel.get(f"pick_{i}"))]  # the slider's checkboxes
         if not idx:  # planner prose: "picked pick_0 and pick_3" or caterer names
             idx = sorted({int(m) for m in re.findall(r"\bpick_(\d+)\b", text) if int(m) < len(vendors)}
                          | {i for i, v in enumerate(vendors) if v["display_name"].lower() in text.lower()})
