@@ -83,9 +83,9 @@ async def onboard(ctx: Context, req: OnboardRequest, progress: Progress | None =
                 menu, reason = VendorMenu(name=req.business_name, slug=slug, place_id=req.place_id,
                                           phone=req.phone, email=req.email, address=req.address), "no website to read"
         timings["extract"] = time.monotonic() - t
-        if not menu.photo_url and menu.place_id:
+        if menu.place_id:  # the business's Google Places photo beats its website's preview image
             async with httpx.AsyncClient(timeout=10) as client:
-                menu.photo_url = await places.place_photo(menu.place_id, client, menu.name) or ""
+                menu.photo_url = await places.place_photo(menu.place_id, client, menu.name) or menu.photo_url
         DATA_DIR.mkdir(exist_ok=True)
         (DATA_DIR / f"{menu.slug}.json").write_text(menu.model_dump_json(indent=2) + "\n")
 

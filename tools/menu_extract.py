@@ -41,6 +41,7 @@ IMAGE_MAX_PX = 1600
 MENU_LINK = re.compile(r"menu|cater|order|pricing|packages|platters|trays", re.I)
 MENU_IMAGE = re.compile(r"menu|cater|price|platter|tray|package", re.I)
 COMMON_MENU_PATHS = ("/catering", "/catering-menu", "/menu", "/menus")
+PLACEHOLDER_IMAGE = re.compile(r"blank|placeholder|default|logo|favicon|s0\.wp\.com/i/", re.I)
 USER_AGENT = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
               "(KHTML, like Gecko) Chrome/124.0 Safari/537.36")
 
@@ -176,7 +177,8 @@ async def _fetch(client: httpx.AsyncClient, url: str) -> Page:
     parser = _Html()
     parser.feed(r.text)
     page.kind, page.title, page.text = "html", parser.title.strip(), _clean("".join(parser.parts))
-    page.links, page.og_image = parser.links, urljoin(url, parser.og_image) if parser.og_image else ""
+    og = urljoin(url, parser.og_image) if parser.og_image else ""
+    page.links, page.og_image = parser.links, "" if PLACEHOLDER_IMAGE.search(og) else og
     on_menu_page = bool(MENU_LINK.search(urlparse(url).path))
     page.image_urls = [urljoin(url, src) for src, alt in parser.images
                        if MENU_IMAGE.search(src) or MENU_IMAGE.search(alt) or on_menu_page][:MAX_OCR_IMAGES * 2]
