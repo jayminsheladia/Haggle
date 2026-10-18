@@ -11,7 +11,6 @@ Owner: Person A
 
 import json
 from datetime import datetime, timezone
-from urllib.parse import quote_plus
 from uuid import uuid4
 
 from uagents_core.contrib.protocols.chat import ChatMessage, MetadataContent, TextContent
@@ -20,12 +19,6 @@ MAX_PAYLOAD_BYTES = 64 * 1024
 
 DIETS = ("vegetarian", "vegan", "halal", "kosher", "gluten_free")
 
-# Shown when a vendor has no Places photo (e.g. agent-only vendors).
-PLACEHOLDER_IMAGE = "https://placehold.co/600x400/png?text={}"
-
-
-def _image(url: str, name: str) -> str:
-    return url or PLACEHOLDER_IMAGE.format(quote_plus(name))
 
 
 def usd(amount: float) -> str:
@@ -141,7 +134,8 @@ def vendor_picker(rfq_id: str, location: str, vendors: list[dict]) -> dict:
             "direction": "row",
             "gap": 12,
             "children": [
-                {"type": "image", "src": _image(v["photo_url"], v["name"]), "alt": v["name"], "aspect_ratio": "1:1"},
+                *([{"type": "image", "src": v["photo_url"], "alt": v["name"], "aspect_ratio": "1:1"}]
+                  if v["photo_url"] else []),
                 {
                     "type": "group",
                     "direction": "column",
@@ -195,7 +189,7 @@ def quotes_carousel(rfq_id: str, title: str, quotes: list[dict]) -> dict:
         "items": [
             {
                 "id": q["vendor_id"],
-                "image": _image(q["photo_url"], q["name"]),
+                **({"image": q["photo_url"]} if q["photo_url"] else {}),
                 "title": q["name"],
                 "subtitle": q["subtitle"],
                 "badges": [{"label": label, "variant": variant} for label, variant in q["badges"]],
@@ -222,7 +216,7 @@ def quote_detail(rfq_id: str, q: dict, can_negotiate: bool) -> dict:
     ctas.append({"label": "Back", "selection": {"action": "back", "rfq_id": rfq_id, "vendor_id": q["vendor_id"]}})
     return {
         "title": q["name"],
-        "hero_image": _image(q["photo_url"], q["name"]),
+        **({"hero_image": q["photo_url"]} if q["photo_url"] else {}),
         "summary_rows": [{"label": label, "value": value} for label, value in q["rows"]],
         "ctas": ctas,
     }
