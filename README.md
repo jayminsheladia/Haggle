@@ -115,11 +115,17 @@ Agent storage (sessions, approvals) lives in the container and resets on redeplo
   saved to `assets/vendors/` and served from the public repo. Fallback: the vendor simply has no photo. Real businesses
   always get their Google Places photo first.
 
+- **Tavily Search Agent** (`agent1qt5uffgp0l3h9mqed8zh8vy5vs374jl2f8y0mjjvqm44axqseejqzmzx9v8`): when a caterer's own
+  site has no prices, the Factory asks it for the caterer's menu pages (links only) and reads them itself, keeping
+  only pages that show the caterer's phone or address. ~13–20 s, so it is used only in the background during
+  onboarding (above CLAUDE.md's ~5 s guideline, never while the user waits on a reply); 35 s timeout; each call has
+  its own Sentry span and a log line with the agent's address and outcome. Fallback: `SERPER_API_KEY` /
+  `TAVILY_API_KEY` if set, else DuckDuckGo. It answers empty to longer prompts, so `tools/menu_search.agent_query`
+  keeps the tested wording.
+
 Not used in the live flow: Evaluated as backups for finding menus, and rejected (CLAUDE.md requires answers in ~5 s):
 - "Website Scraper Agent" (`agent1qwnjmzwwdq9rjs30y3qw988htrvte6lk2xaak9xg4kz0fsdz0t9ws4mwsgs`): blocked by the same
   sites (HTTP 403), 13.6 s.
-- "Tavily Search Agent" (`agent1qt5uffgp0l3h9mqed8zh8vy5vs374jl2f8y0mjjvqm44axqseejqzmzx9v8`): 17.7 s, returns a prose
-  summary without page links (it confirmed Beverly Catering publishes no prices).
 
 Instead the Factory follows each site's own menu/catering links and PDFs (and /catering, /menu), reads PDF pages and
 menu images with the ASI:One vision model (OCR), and keeps the page with the most prices; photos come from the site's

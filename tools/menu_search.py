@@ -1,8 +1,8 @@
 """Find a caterer's menu on other sites when its own website has no prices.
 
 Searches the web for the business's menu and keeps results on known menu platforms (SinglePlatform, Toast,
-ezCater, AllMenus, ...). Search provider, first one configured: SERPER_API_KEY (Google results, serper.dev),
-TAVILY_API_KEY (tavily.com), else DuckDuckGo's HTML page (no key, but it rate-limits after a few queries). A platform page is only used if it
+ezCater, AllMenus, ...). Search, in order: an `agent_search` callable if given (the Factory passes one that asks
+the Agentverse "Tavily Search Agent"), then SERPER_API_KEY (Google results), TAVILY_API_KEY, then DuckDuckGo. A platform page is only used if it
 shows this business's own phone number or street address, so another location's prices are never used.
 
 Owner: Person B
@@ -13,6 +13,7 @@ import html
 import logging
 import os
 import re
+from collections.abc import Awaitable, Callable
 from urllib.parse import parse_qs, unquote, urlparse
 
 import httpx
@@ -86,20 +87,40 @@ async def _duckduckgo(client: httpx.AsyncClient, query: str) -> list[str]:
     return []
 
 
+AgentSearch = Callable[[str], Awaitable[list[str]]]
+URL = re.compile(r"https?://[^\s<>\"')\]]+")
+
+
+def urls_in(text: str) -> list[str]:
+    return [u.rstrip(".,;") for u in URL.findall(text)]
+
+
+def agent_query(name: str, address: str = "") -> str:
+    """The request sent to a search agent: links only, so the Factory can read the pages itself."""
+    # Exactly this wording: tested with the Tavily Search Agent, which answers empty to longer variants.
+    where = ", ".join(address.split(",")[:2]) if address else "Los Angeles"
+    return (f"Search the web and reply ONLY with a list of URLs (one per line, no other text) of pages that show "
+            f"the menu of {name}, {where}. Include menu sites like SinglePlatform, Toast, ezCater, Yelp, AllMenus.")
+
+
 def _platform_rank(url: str) -> int | None:
     host = urlparse(url).netloc.lower()
     return next((i for i, p in enumerate(MENU_PLATFORMS) if host == p or host.endswith("." + p)), None)
 
 
-async def find_menu_pages(name: str, address: str = "", phone: str = "", own_site: str = "") -> list[str]:
+async def find_menu_pages(name: str, address: str = "", phone: str = "", own_site: str = "",
+                          agent_search: AgentSearch | None = None) -> list[str]:
     """Menu-platform URLs that probably carry this business's menu, best first."""
-    street = address.split(",")[0] if address else ""
-    queries = [f"{name} {street or 'Los Angeles'} menu", f"{name} Los Angeles catering menu prices"]
-    async with httpx.AsyncClient(timeout=SEARCH_TIMEOUT_S, follow_redirects=True,
-                                 headers={"User-Agent": USER_AGENT}) as client:
-        results = []
-        for q in queries:  # one at a time: DuckDuckGo rate-limits bursts
-            results += await _search(client, q)
+    results: list[str] = []
+    if agent_search:
+        results = await agent_search(agent_query(name, address))
+    if not results:
+        street = address.split(",")[0] if address else ""
+        queries = [f"{name} {street or 'Los Angeles'} menu", f"{name} Los Angeles catering menu prices"]
+        async with httpx.AsyncClient(timeout=SEARCH_TIMEOUT_S, follow_redirects=True,
+                                     headers={"User-Agent": USER_AGENT}) as client:
+            for q in queries:  # one at a time: DuckDuckGo rate-limits bursts
+                results += await _search(client, q)
     own_host = urlparse(own_site).netloc.removeprefix("www.") if own_site else ""
     ranked = {}
     for url in results:

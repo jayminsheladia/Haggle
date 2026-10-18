@@ -21,12 +21,14 @@ import time
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timezone
 from pathlib import Path
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import httpx
 from dotenv import load_dotenv
 from uagents import Agent, Context, Protocol
 from uagents_core.contrib.protocols.chat import ChatAcknowledgement, ChatMessage, TextContent, chat_protocol_spec
+
+from tools.menu_search import urls_in
 
 from integrations import places
 from shared import observability
@@ -45,6 +47,43 @@ README_PATH = Path(__file__).with_name("factory_README.md")
 DESCRIPTION = "Haggle Vendor Agent Factory: turns any Los Angeles caterer's menu page into a Haggle vendor agent."
 
 Progress = Callable[[str], Awaitable[None]]
+
+# External agent (CLAUDE.md "Using existing Agentverse agents"): finds a business's menu pages on the web.
+# Background only (onboarding), so its ~20 s answer never blocks the user; fallback: search API / DuckDuckGo.
+SEARCH_AGENT = "agent1qt5uffgp0l3h9mqed8zh8vy5vs374jl2f8y0mjjvqm44axqseejqzmzx9v8"  # "Tavily Search Agent"
+SEARCH_AGENT_TIMEOUT_S = 35
+
+
+_search_waiters: dict[UUID, asyncio.Future] = {}  # our search session -> its answer
+
+
+async def agent_search(ctx: Context, query: str, trace: str = "") -> list[str]:
+    """Ask the Agentverse Tavily Search Agent for page links; [] on timeout so the caller falls back.
+
+    Each search gets its own session, so several onboardings can search at once and every answer is matched to
+    its question (the agent sends an empty message before its real answer, so we wait for one with text).
+    """
+    started = time.monotonic()
+    session = uuid4()
+    waiter = asyncio.get_running_loop().create_future()
+    _search_waiters[session] = waiter
+    outcome, urls = "", []
+    with observability.span("factory.search_agent", "Tavily Search Agent", trace, agent=SEARCH_AGENT):
+        handler_session, ctx._session = ctx._session, session  # send this one message in our own session
+        try:
+            await ctx.send(SEARCH_AGENT, ChatMessage(timestamp=datetime.now(timezone.utc), msg_id=uuid4(),
+                                                     content=[TextContent(type="text", text=query)]))
+        finally:
+            ctx._session = handler_session
+        try:
+            urls = urls_in(await asyncio.wait_for(waiter, SEARCH_AGENT_TIMEOUT_S))
+            outcome = f"success, {len(urls)} links" if urls else "answer without links, fallback"
+        except asyncio.TimeoutError:
+            outcome = f"timeout after {SEARCH_AGENT_TIMEOUT_S}s, fallback"
+        finally:
+            _search_waiters.pop(session, None)
+    ctx.logger.info(f"search agent {SEARCH_AGENT[:16]}: {outcome} in {time.monotonic() - started:.1f}s")
+    return urls
 
 
 def menu_url_for(place_id: str, website: str) -> str:
@@ -77,8 +116,9 @@ async def onboard(ctx: Context, req: OnboardRequest, progress: Progress | None =
         t = time.monotonic()
         with observability.span("factory.extract", f"extract {req.business_name or url}", req.trace):
             if url:
-                menu, reason = await extract_menu_with_reason(url, req.business_name or None, req.place_id,
-                                                              req.phone, req.email, address=req.address)
+                menu, reason = await extract_menu_with_reason(
+                    url, req.business_name or None, req.place_id, req.phone, req.email,
+                    agent_search=lambda q: agent_search(ctx, q, req.trace), address=req.address)
             else:
                 menu, reason = VendorMenu(name=req.business_name, slug=slug, place_id=req.place_id,
                                           phone=req.phone, email=req.email, address=req.address), "no website to read"
@@ -132,6 +172,14 @@ async def on_onboard(ctx: Context, sender: str, req: OnboardRequest):
 @chat.on_message(ChatMessage)
 async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
     await ctx.send(sender, ChatAcknowledgement(timestamp=datetime.now(timezone.utc), acknowledged_msg_id=msg.msg_id))
+    if sender == SEARCH_AGENT:  # an answer to one of our searches, never a chat request
+        text = "".join(c.text for c in msg.content if isinstance(c, TextContent)).strip()
+        waiter = _search_waiters.get(ctx.session)
+        ctx.logger.info(f"search agent message: session {str(ctx.session)[:8]} "
+                        f"({'ours' if waiter else 'unknown'}), {len(text)} chars")
+        if text and waiter and not waiter.done():
+            waiter.set_result(text)
+        return
     text = re.sub(r"^(@[\w.-]+[\s,:]*)+", "", "".join(c.text for c in msg.content if isinstance(c, TextContent))).strip()
     m = re.search(r"\bonboard\s+(?:this business\s+)?(\S+)", text, re.I)
     if not m:

@@ -5,7 +5,7 @@
   "place_id": "ChIJG2sv3k67woAREbr1K4TmkBY",
   "phone": "(424) 777-3799",
   "email": "",
-  "address": "",
+  "address": "2116 Westwood Blvd, Los Angeles, CA 90025, USA",
   "lat": null,
   "lng": null,
   "items": [],
@@ -22,7 +22,7 @@
     "delivery_fee_usd": 0.0
   },
   "extraction_status": "estimated",
-  "extracted_at": "2026-10-18T02:24:04.318671+00:00",
+  "extracted_at": "2026-10-18T05:10:53.221601+00:00",
   "rating": null,
   "photo_url": "https://lh3.googleusercontent.com/grass-cs/AABkmLdWQrLs9hANKrC4veDtT1OkFokrz4lJUoAGHf4ynZDkrAfa2K75mqlpI5D5HcRH0Gs5zsFMueo5RN2OGTVz6lbZd5FE0NPuTHOzYLj3DeMPX_VGNVkWERyhfoV-Hzfm3uRMZQ1A=s4800-w800"
 }

@@ -28,7 +28,7 @@ from pydantic import BaseModel, ValidationError
 
 from shared.llm import chat_json
 from shared.menu_schema import DietaryTag, MenuItem, VendorMenu, slugify
-from tools.menu_search import find_menu_pages, same_business
+from tools.menu_search import AgentSearch, find_menu_pages, same_business
 
 FETCH_TIMEOUT_S = 15
 LLM_TIMEOUT_S = 45
@@ -319,7 +319,7 @@ async def _read_page(client: httpx.AsyncClient, name: str, page: Page) -> tuple[
 
 async def extract_menu_with_reason(
     url: str, name: Optional[str] = None, place_id: Optional[str] = None,
-    phone: Optional[str] = None, email: Optional[str] = None, **extra,
+    phone: Optional[str] = None, email: Optional[str] = None, agent_search: Optional[AgentSearch] = None, **extra,
 ) -> tuple[VendorMenu, str]:
     """Return (menu, reason). reason explains an "estimated" menu, or is "" when extracted."""
     async with httpx.AsyncClient(timeout=FETCH_TIMEOUT_S, follow_redirects=True,
@@ -353,7 +353,7 @@ async def extract_menu_with_reason(
         await read(pages)
         if _priced(best) < MIN_PRICED_ITEMS and (menu.phone or menu.address):
             # The business's own site has no prices: look for its menu on menu platforms.
-            found = await find_menu_pages(name, menu.address, menu.phone, url)
+            found = await find_menu_pages(name, menu.address, menu.phone, url, agent_search)
             more = await asyncio.gather(*(_fetch(client, u) for u in found))
             pages += more
             await read(list(more), check_business=True)
