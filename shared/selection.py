@@ -12,7 +12,7 @@ import re
 # Every action any Haggle card can send back.
 KNOWN_ACTIONS = (
     "submit_event", "toggle_vendor", "select_vendors", "select_all", "pick_quote", "request_quote", "book", "negotiate", "confirm",
-    "cancel", "back", "edit",
+    "cancel", "back", "edit", "submit_leftovers", "pick_rescue",
 )
 
 

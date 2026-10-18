@@ -265,6 +265,8 @@ class BookingConfirmed(Model):
     total_usd: float
     deposit_usd: float
     checkout_session_id: str  # Stripe Checkout Session id = CommitPayment.transaction_id
+    lat: Optional[float] = None  # venue (for the Follow-up's food rescue matching)
+    lng: Optional[float] = None
     trace: str = ""
 
 
@@ -305,4 +307,43 @@ class QuoteRequestSent(Model):
     reply_by: str = ""
     sent: bool = False
     detail: str = ""
+    trace: str = ""
+
+
+# ---- Follow-up (Person D) ---------------------------------------------------
+# The Follow-up can't post into the user's ASI:One chat itself: the Concierge relays its messages (UserNotice)
+# and sends the user's card replies back (UserReply).
+
+
+class FollowupSchedule(Model):
+    """Booker -> Follow-up once a booking is confirmed. Idempotent on rfq_id."""
+    rfq_id: str
+    user_address: str
+    vendor_id: str
+    vendor_name: str
+    event_date: str  # YYYY-MM-DD, America/Los_Angeles
+    event_time: str = ""  # HH:MM
+    location: str = ""
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+    headcount: int = 0
+    trace: str = ""
+
+
+class UserNotice(Model):
+    """Follow-up -> Concierge: send this to the user (a card when card_kind is set)."""
+    rfq_id: str
+    user_address: str
+    text: str
+    card_kind: str = ""  # form | carousel | review | detail | custom
+    card_payload: str = ""  # json.dumps'd card payload
+    trace: str = ""
+
+
+class UserReply(Model):
+    """Concierge -> Follow-up: the user's reply to a Follow-up card (submit_leftovers, pick_rescue)."""
+    rfq_id: str = ""  # empty when the planner narrated the reply without it
+    user_address: str
+    selection: str  # json.dumps'd parse_selection() result
+    text: str = ""
     trace: str = ""

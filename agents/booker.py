@@ -32,15 +32,20 @@ from integrations.email import EmailError, send_email
 from integrations.email_templates import booking_confirmation, quote_request, vendor_order
 from integrations.stripe_client import refund_deposit, verify_deposit
 from shared import observability
-from shared.models import Accept, BookingConfirmed, BookingResult, Decline, Quote, QuoteRequest, QuoteRequestSent
+from shared.models import (
+    Accept, BookingConfirmed, BookingResult, Decline, FollowupSchedule, Quote, QuoteRequest, QuoteRequestSent,
+)
 
 load_dotenv()
 
 CONCIERGE_ADDRESS = os.getenv(
     "CONCIERGE_ADDRESS", "agent1qtczn7424hmp43jqetnl9pydsmqhcfzfg8muzyl5ajxwyep0mt7lxxewe9k"
 )
+FOLLOWUP_ADDRESS = os.getenv(
+    "FOLLOWUP_ADDRESS", "agent1qf5hzpsg0xxmmm5dkjvkpvfget7n7es0vyyc47sk359g7c2u82a8yl4m2xa"
+)
 VENDOR_TIMEOUT_S = 10
-LA = ZoneInfo("America/Los_Angeles")
+LA =ZoneInfo("America/Los_Angeles")
 QUOTE_REPLY_HOURS = 48  # how long a caterer gets to answer a quote request (capped at 2 days before the event)
 
 agent = Agent(
@@ -140,6 +145,13 @@ async def on_booking(ctx: Context, sender: str, b: BookingConfirmed):
     ctx.logger.info(f"[{b.rfq_id}] booked {b.vendor_id} ${b.total_usd:.2f} (deposit ${b.deposit_usd:.2f}, "
                     f"email {'sent' if email_sent else 'NOT sent'}; {vendor_detail})")
     await ctx.send(sender, result)
+
+    # 4. Reminders and the after-event check-in (the Follow-up is idempotent on rfq_id).
+    if b.user_address and b.event_date:
+        await ctx.send(FOLLOWUP_ADDRESS, FollowupSchedule(
+            rfq_id=b.rfq_id, user_address=b.user_address, vendor_id=b.vendor_id, vendor_name=b.vendor_name,
+            event_date=b.event_date, event_time=b.event_time, location=b.location, lat=b.lat, lng=b.lng,
+            headcount=b.headcount, trace=b.trace))
 
 
 async def send_booking_messages(ctx: Context, b: BookingConfirmed) -> bool:

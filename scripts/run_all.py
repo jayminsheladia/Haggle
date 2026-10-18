@@ -21,6 +21,7 @@ AGENTS = [  # (name, module, seconds to wait before starting the next one)
     ("negotiator", "agents.negotiator", 2),
     ("discovery", "agents.discovery", 2),
     ("booker", "agents.booker", 2),
+    ("followup", "agents.followup", 2),
     ("concierge", "agents.concierge", 0),
 ]
 RESTART_DELAY_S = 5

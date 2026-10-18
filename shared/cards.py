@@ -247,3 +247,61 @@ def picker_carousel(rfq_id: str, location: str, vendors: list[dict]) -> dict:
     })
     return {"title": f"Caterers near {location}", "subtitle": "Swipe, tap Select on each one you want, then Get quotes",
             "items": items}
+
+
+def leftover_form(rfq_id: str, vendor_id: str, vendor_name: str) -> dict:
+    """After the event: rating plus the leftover food check-in (build plan 3C). Choices are parsed in code."""
+    def select(name: str, label: str, options: list[tuple[str, str]], required: bool = False) -> dict:
+        return {"name": name, "kind": "select", "label": label, "required": required,
+                "options": [{"value": v, "label": lbl} for v, lbl in options]}
+
+    return {
+        "title": "How did it go?",
+        "fields": [
+            select("rating", f"How was {vendor_name}?",
+                   [("5", "★★★★★ Great"), ("4", "★★★★ Good"), ("3", "★★★ OK"), ("2", "★★ Poor"), ("1", "★ Bad")]),
+            select("amount", "Any leftover food?", [("none", "None"), ("little", "A little"),
+                                                    ("tray", "About a tray"), ("trays", "Several trays")],
+                   required=True),
+            select("food_type", "What kind? (if any)", [("hot", "Hot prepared food"), ("cold", "Cold prepared food"),
+                                                        ("packaged", "Packaged / sealed")]),
+            select("kept_safe", "Has it been kept hot or refrigerated?",
+                   [("yes", "Yes"), ("no", "No"), ("unsure", "Not sure")]),
+            select("handoff", "Pickup or drop-off?", [("pickup", "They pick it up"), ("dropoff", "We'll drop it off")]),
+            {"name": "contact", "kind": "text", "label": "Your phone or email for the organization (optional)",
+             "required": False},
+        ],
+        "submit_cta": {
+            "label": "Send",
+            "selection": {"action": "submit_leftovers", "rfq_id": rfq_id, "vendor_id": vendor_id},
+        },
+    }
+
+
+def rescue_carousel(rfq_id: str, vendor_id: str, title: str, orgs: list[dict]) -> dict:
+    """Nearby open food recovery organizations. orgs: tools.food_rescue.match() results."""
+    def subtitle(o: dict) -> str:
+        parts = [f"{o['distance_mi']} mi away" if o.get("distance_mi") is not None else o.get("address", "")]
+        parts.append(f"Open {o['hours_today']}")
+        return " · ".join(p for p in parts if p)
+
+    return {
+        "title": title,
+        "subtitle": "The organization makes the final call on what it accepts.",
+        "items": [
+            {
+                "id": o["org_id"],
+                "title": o["name"],
+                "subtitle": subtitle(o),
+                "badges": [{"label": "Offers pickup" if o.get("pickup") else "Drop-off only", "variant": "info"}]
+                          + [{"label": a.capitalize(), "variant": "success"} for a in o.get("accepts", [])],
+                "secondary_text": o.get("address", ""),
+                "primary_cta": {
+                    "label": "Send it here",
+                    "selection": {"action": "pick_rescue", "rfq_id": rfq_id, "vendor_id": vendor_id,
+                                  "org_id": o["org_id"]},
+                },
+            }
+            for o in orgs
+        ],
+    }

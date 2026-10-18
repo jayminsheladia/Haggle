@@ -32,9 +32,9 @@ from shared.cards import (
 )
 from shared.llm import chat_json
 from shared.models import (
-    RFQ, BookingConfirmed, BookingResult, CounterRequest, CounterResult, DiscoveryRequest, DiscoveryResult,
+    BookingConfirmed, BookingResult, CounterRequest, CounterResult, DiscoveryRequest, DiscoveryResult,
     NegotiationRequest, NegotiationResult, OnboardRequest, OnboardResult, Quote, QuoteRequest, QuoteRequestSent,
-    VendorRef,
+    RFQ, UserNotice, UserReply, VendorRef,
 )
 from shared.menu_schema import slugify
 from shared.payment import build_payment_proto, deposit_request
@@ -51,6 +51,8 @@ NEGOTIATOR_ADDRESS = os.getenv(
     "NEGOTIATOR_ADDRESS", "agent1qg68ah5xmm3t9lcecua0dvqqknkqhqv4scrpf3cjjhx64lrqkpvd7erglhl"
 )
 FACTORY_ADDRESS = os.getenv("FACTORY_ADDRESS", "agent1qdzh8nw69qe2x0rw3tc7rg8ddt9e6lda8x7y6hqfjwfaldk2k7kzukj7rh5")
+FOLLOWUP_ADDRESS = os.getenv("FOLLOWUP_ADDRESS", "agent1qf5hzpsg0xxmmm5dkjvkpvfget7n7es0vyyc47sk359g7c2u82a8yl4m2xa")
+FOLLOWUP_ACTIONS = ("submit_leftovers", "pick_rescue")  # replies to Follow-up cards, relayed back to it
 BOOKER_ADDRESS = os.getenv("BOOKER_ADDRESS", "agent1qfq9dyy5q5t5dg7tzuhkuqztzqy9q806dw4qd8v6sg6znu87rmx8s3deu0f")
 ONBOARD_TIMEOUT_S = 75  # the Factory reads menus in parallel; usually well under a minute
 DEPOSIT_PCT = 0.20  # deposit taken at booking (build plan)
@@ -362,6 +364,11 @@ async def _on_chat(ctx: Context, sender: str, msg: ChatMessage):
 
     sel = parse_selection(text)
     action = sel.get("action")
+    if action in FOLLOWUP_ACTIONS:  # after-event cards belong to a booked (often earlier) request
+        await ctx.send(FOLLOWUP_ADDRESS, UserReply(rfq_id=sel.get("rfq_id", ""), user_address=sender,
+                                                   selection=json.dumps(sel), text=text[:2000],
+                                                   trace=s.get("trace", "")))
+        return
     if sel.get("rfq_id") and sel["rfq_id"] != s["rfq_id"]:
         await ctx.send(sender, text_message("That card is from an earlier request. Here's where we are now."))
         await show_current(ctx, sender, s)
@@ -995,7 +1002,8 @@ def booking_message(s: dict, user: str) -> BookingConfirmed:
         headcount=cl["headcount"]["value"],
         dietary_summary=display("dietary", cl["dietary"]["value"]) + "; " + display("allergies", cl["allergies"]["value"]),
         total_usd=b["total_usd"], deposit_usd=b["deposit_usd"],
-        checkout_session_id=b["checkout"]["checkout_session_id"], trace=s["trace"],
+        checkout_session_id=b["checkout"]["checkout_session_id"],
+        lat=s.get("location", {}).get("lat"), lng=s.get("location", {}).get("lng"), trace=s["trace"],
     )
 
 
@@ -1318,11 +1326,35 @@ async def on_counter_result(ctx: Context, sender: str, result: CounterResult):
     await send_detail(ctx, user, s, vid, transcript)
 
 
+# ---- Follow-up relay -------------------------------------------------------
+
+followup = Protocol(name="HaggleFollowupClient", version="0.1.0")
+
+
+@followup.on_message(UserNotice)
+async def on_user_notice(ctx: Context, sender: str, n: UserNotice):
+    """Reminders, the after-event check-in and food rescue cards from the Follow-up, sent on to the user."""
+    if sender != FOLLOWUP_ADDRESS:
+        ctx.logger.warning(f"Ignoring UserNotice from unknown sender {sender}")
+        return
+    observability.tag(n.trace, n.rfq_id)
+    if ctx.storage.get(f"rfq:{n.rfq_id}") != n.user_address:  # only the user who made this request
+        ctx.logger.warning(f"[{n.rfq_id}] UserNotice for a user who didn't make this request")
+        return
+    try:
+        msg = card_message(n.text, n.card_kind, json.loads(n.card_payload)) if n.card_kind else text_message(n.text)
+    except ValueError:
+        ctx.logger.exception(f"[{n.rfq_id}] bad Follow-up card; sending the text only")
+        msg = text_message(n.text)
+    await ctx.send(n.user_address, msg)
+
+
 agent.include(chat, publish_manifest=True)
 agent.include(discovery)
 agent.include(negotiation)
 agent.include(onboarding)
 agent.include(booker)
+agent.include(followup)
 agent.include(build_payment_proto(on_commit, on_reject), publish_manifest=True)
 
 if __name__ == "__main__":

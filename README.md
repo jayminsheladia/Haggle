@@ -16,7 +16,7 @@ Haggle is a multi-agent group catering marketplace for Los Angeles, built on Fet
 | Vendor Agent Factory | `agents/factory.py` | `agent1qdzh8nw69qe2x0rw3tc7rg8ddt9e6lda8x7y6hqfjwfaldk2k7kzukj7rh5` | [profile](https://agentverse.ai/agents/details/agent1qdzh8nw69qe2x0rw3tc7rg8ddt9e6lda8x7y6hqfjwfaldk2k7kzukj7rh5/profile) |
 | Negotiator | `agents/negotiator.py` | `agent1qg68ah5xmm3t9lcecua0dvqqknkqhqv4scrpf3cjjhx64lrqkpvd7erglhl` | [profile](https://agentverse.ai/agents/details/agent1qg68ah5xmm3t9lcecua0dvqqknkqhqv4scrpf3cjjhx64lrqkpvd7erglhl/profile) |
 | Booker | `agents/booker.py` | `agent1qfq9dyy5q5t5dg7tzuhkuqztzqy9q806dw4qd8v6sg6znu87rmx8s3deu0f` | [profile](https://agentverse.ai/agents/details/agent1qfq9dyy5q5t5dg7tzuhkuqztzqy9q806dw4qd8v6sg6znu87rmx8s3deu0f/profile) |
-| Follow-up | `agents/followup.py` | _TBD_ | _TBD_ |
+| Follow-up | `agents/followup.py` | `agent1qf5hzpsg0xxmmm5dkjvkpvfget7n7es0vyyc47sk359g7c2u82a8yl4m2xa` | [profile](https://agentverse.ai/agents/details/agent1qf5hzpsg0xxmmm5dkjvkpvfget7n7es0vyyc47sk359g7c2u82a8yl4m2xa/profile) |
 
 ### Vendor agents
 
@@ -101,7 +101,17 @@ caterer, and texts the organizer via Photon when configured → `CompletePayment
 unclaimed caterer makes the Booker email it a quote request with a link to claim its agent. During development every
 email goes to `TEAM_INBOX_EMAIL` and texts only to `TEAM_PHONE` / `OWNER_TEST_PHONE`.
 
-_TBD — the Follow-up agent._
+**Follow-up** (`python -m agents.followup`): after the Booker confirms a booking it schedules the event here.
+A reminder goes out 24 h before (skipped if the booking was made later than that), and 15 min after the event's
+assumed 3 h end a "How did it go?" form asks for a rating and any leftover food. Leftovers that were kept hot or
+refrigerated are matched in code (`tools/food_rescue.py`) to organizations in `data/food_rescue_orgs.json` that
+accept that food, are open now and fit pickup / drop-off; the user picks one from a carousel, the organization gets
+an email (team inbox during development) and the user sees the impact estimate (~1.2 lb per meal). Messages reach
+the user through the Concierge (`UserNotice`), and card replies come back as `UserReply`.
+
+To demo the check-in without waiting for the event, set `FOLLOWUP_DEMO_DELAY_S=60` (check in a minute after
+booking). `data/food_rescue_orgs.json` must list real, verified organizations (build plan 3C) for rescue to find
+any; with it empty, Haggle says plainly that nothing is open and suggests safe options.
 
 ## Deploy (always-on server)
 

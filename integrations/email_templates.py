@@ -90,3 +90,21 @@ def quote_request(q: QuoteRequest, claim_url: str, reply_by: str) -> tuple[str, 
             + f"\n\nReply to this email with your price, or claim your free Haggle agent: {claim_url}\n"
             "Prices shown to the customer are marked as estimates until you confirm.")
     return subject, _html("Catering quote request", rows, intro, footer), text
+
+
+def rescue_request(org: dict, location: str, food_label: str, amount_label: str, handoff: str, contact: str,
+                   lbs: int, meals: int, rfq_id: str) -> tuple[str, str, str]:
+    """(subject, html, text): leftover food offered to a food recovery organization (build plan 3C)."""
+    rows = [
+        ("Food", food_label), ("Amount", f"{amount_label} (about {lbs} lbs, an estimate)"),
+        ("Kept at safe temperature", "yes, per the organizer"),
+        ("Hand-off", "pickup: please collect it from the event location" if handoff == "pickup"
+         else "drop-off: the organizer will bring it to you"),
+        ("Event location", location), ("Organizer contact", contact or "reply to this email"), ("Reference", rfq_id),
+    ]
+    subject = f"Leftover food available: {amount_label.lower()} of {food_label.lower()} ({'pickup' if handoff == 'pickup' else 'drop-off'})"
+    intro = (f"Hi {org['name']} team, an event catered through Haggle has leftover food it would like to donate. "
+             f"It could provide roughly {meals} meals. You make the final call on what you accept.")
+    footer = escape(f"Meant for {org.get('email') or org['name']}; during development it goes to the team inbox.")
+    text = intro + "\n\n" + "\n".join(f"- {k}: {v}" for k, v in rows)
+    return subject, _html("Leftover food donation", rows, intro, footer), text
