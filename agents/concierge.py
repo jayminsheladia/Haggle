@@ -5,6 +5,7 @@ Run from the repo root:  python -m agents.concierge
 Owner: Person A
 """
 
+import json
 import os
 import re
 from datetime import date, datetime, timezone
@@ -22,9 +23,14 @@ from uagents_core.contrib.protocols.chat import (
 )
 
 from shared import observability
-from shared.cards import DIETS, card_message, event_form, text_message
+from shared.cards import (
+    DIETS, card_message, event_form, quote_detail, quotes_carousel, text_message, usd, vendor_picker,
+)
 from shared.llm import chat_json
-from shared.models import DiscoveryRequest, DiscoveryResult
+from shared.models import (
+    RFQ, CounterRequest, CounterResult, DiscoveryRequest, DiscoveryResult, NegotiationRequest,
+    NegotiationResult, Quote, VendorRef,
+)
 from shared.selection import parse_selection
 
 load_dotenv()
@@ -34,7 +40,10 @@ LA = ZoneInfo("America/Los_Angeles")
 DISCOVERY_ADDRESS = os.getenv(
     "DISCOVERY_ADDRESS", "agent1q27868llc79a2pncexj4z6nejtjw87rg4p3cv4tjt27q9vuh2s8w7clzg5y"
 )
-SHOW_VENDORS = 5
+NEGOTIATOR_ADDRESS = os.getenv(
+    "NEGOTIATOR_ADDRESS", "agent1qwv99f5t6fyjgyjemmdsnluzmayarx8z4v40ytx0df0njqffl4vy6hdgj2z"
+)
+VENDOR_AGENT_PREFIX = "haggle-vendor-"  # vendors/template.py names every vendor agent this way
 
 # ---- Intake checklist ------------------------------------------------------
 # status: missing | needs_confirm | filled | offer | declined
@@ -59,7 +68,17 @@ RESET_WORDS = {"start over", "reset", "new request"}
 def new_session() -> dict:
     checklist = {f: {"value": None, "status": "missing"} for f in REQUIRED}
     checklist.update({f: {"value": None, "status": "offer"} for f in OPTIONAL})
-    return {"stage": "new", "rfq_id": f"rfq_{uuid4().hex[:10]}", "checklist": checklist, "asked": []}
+    return {
+        "stage": "new",
+        "rfq_id": f"rfq_{uuid4().hex[:10]}",
+        "version": 1,  # bumped when the request or the vendor shortlist changes
+        "checklist": checklist,
+        "asked": [],
+    }
+
+
+def fingerprint(checklist: dict) -> str:
+    return json.dumps({f: checklist[f]["value"] for f in REQUIRED}, sort_keys=True)
 
 
 def open_fields(checklist: dict) -> dict[str, str]:
@@ -318,9 +337,23 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
         await ctx.send(sender, text_message("Starting a new request. Tell me about your event."))
         return
 
-    checklist = s["checklist"]
     sel = parse_selection(text)
-    if sel.get("action") == "submit_event":
+    action = sel.get("action")
+    if sel.get("rfq_id") and sel["rfq_id"] != s["rfq_id"]:
+        await ctx.send(sender, text_message("That card is from an earlier request. Here's where we are now."))
+        await show_current(ctx, sender, s)
+        return
+    if action in ("select_vendors", "select_all") and s.get("vendors"):
+        await pick_vendors(ctx, sender, s, sel, text)
+        ctx.storage.set(sender, s)
+        return
+    if action in ("pick_quote", "negotiate", "back") and s.get("quotes"):
+        await quote_action(ctx, sender, s, action, sel, text)
+        ctx.storage.set(sender, s)
+        return
+
+    checklist = s["checklist"]
+    if action == "submit_event":
         await apply_form(ctx, checklist, sel, s.get("asked", []))
     else:
         data = await extract_event(ctx, text)
@@ -337,16 +370,23 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
             sender,
             card_message(form_narration(checklist, ask), "form", event_form(s["rfq_id"], ask, have)),
         )
+    elif s.get("searched_fp") == fingerprint(checklist):
+        await show_current(ctx, sender, s)  # nothing changed: don't search again
     else:
         # TODO(Phase 2): extras card, then the confirmation review card.
-        s["stage"] = "confirming"
+        if s.get("searched_fp"):
+            s["version"] += 1  # the request changed: old quotes must not be mixed with new ones
+        s["searched_fp"] = fingerprint(checklist)
+        for k in ("vendors", "quotes", "ranked", "fits", "declined", "list_prices", "shortlist", "countering"):
+            s.pop(k, None)
+        s["stage"] = "discovering"
         s["asked"] = []
         await ctx.send(
             sender,
             text_message(f"Here's your request: {summary(checklist)}. "
-                         "Looking for caterers nearby. No caterers are contacted until you confirm."),
+                         "Looking for caterers nearby. No caterers are contacted until you choose."),
         )
-        # Searching is allowed before confirmation; contacting vendors is not.
+        # Searching is allowed before the user chooses; contacting vendors is not.
         s.setdefault("trace", observability.new_trace())
         ctx.storage.set(f"rfq:{s['rfq_id']}", sender)
         await ctx.send(
@@ -362,24 +402,67 @@ async def on_ack(ctx: Context, sender: str, msg: ChatAcknowledgement):
     pass
 
 
-# ---- Discovery replies -----------------------------------------------------
+async def show_current(ctx: Context, user: str, s: dict) -> None:
+    """Resend whatever the user should be looking at now."""
+    if s.get("quotes"):
+        await send_carousel(ctx, user, s, "Here are your quotes.")
+    elif s.get("vendors"):
+        await send_picker(ctx, user, s)
+    elif s.get("stage") in ("discovering", "quoting"):
+        await ctx.send(user, text_message("Still working on it. I'll message you as soon as I have results."))
+    else:
+        await ctx.send(user, text_message("Tell me about your event, or say \"start over\"."))
+
+
+def _session_for(ctx: Context, rfq_id: str) -> tuple[str | None, dict | None]:
+    user = ctx.storage.get(f"rfq:{rfq_id}")
+    s = ctx.storage.get(user) if user else None
+    if not s or s.get("rfq_id") != rfq_id:
+        return None, None
+    return user, s
+
+
+# ---- Discovery -> caterer picker ------------------------------------------
 
 discovery = Protocol(name="HaggleDiscoveryClient", version="0.1.0")
 
 
-def vendor_list(result: DiscoveryResult) -> str:
-    lines = [f"I found {len(result.vendors)} caterers near {result.resolved_location}:"]
-    for i, v in enumerate(result.vendors[:SHOW_VENDORS], 1):
-        parts = [v.name]
-        if v.rating is not None:
-            parts.append(f"★ {v.rating}" + (f" ({v.rating_count})" if v.rating_count else ""))
-        if v.source == "places":
-            parts.append(f"{v.distance_mi} mi away")
-        lines.append(f"{i}. " + " · ".join(parts))
-    if len(result.vendors) > SHOW_VENDORS:
-        lines.append(f"…and {len(result.vendors) - SHOW_VENDORS} more.")
-    lines.append("No caterers have been contacted yet.")
-    return "\n".join(lines)
+def vendor_entry(v) -> dict:
+    """VendorInfo -> what the session keeps. Agent vendors use the vendor's own vendor_id."""
+    d = v.dict()
+    if v.agent_address:
+        if v.name.startswith(VENDOR_AGENT_PREFIX):
+            vid = v.name[len(VENDOR_AGENT_PREFIX):]
+            name = vid.replace("-", " ").title()
+        else:
+            vid, name = v.agent_address, v.name
+    else:
+        vid, name = v.place_id or re.sub(r"\W+", "-", v.name.lower()), v.name
+    meta = []
+    if v.rating is not None:
+        meta.append(f"★ {v.rating}" + (f" ({v.rating_count})" if v.rating_count else ""))
+    if v.source == "places":
+        meta.append(f"{v.distance_mi} mi away")
+    d.update(vendor_id=vid, display_name=name, live=bool(v.agent_address),
+             meta=" · ".join(meta) or "Haggle vendor agent")
+    return d
+
+
+async def send_picker(ctx: Context, user: str, s: dict) -> None:
+    vendors = s["vendors"]
+    live = sum(v["live"] for v in vendors)
+    loc = s["location"]["resolved"]
+    note = (f"{live} of them can quote live right now." if live
+            else "None of them has a Haggle agent yet, so live quotes aren't available for these.")
+    await ctx.send(user, card_message(
+        f"I found {len(vendors)} caterers near {loc}. {note} Pick the ones you want quotes from.",
+        "custom",
+        vendor_picker(
+            s["rfq_id"], loc,
+            [{"vendor_id": v["vendor_id"], "name": v["display_name"], "photo_url": v["photo_url"],
+              "meta": v["meta"], "live": v["live"]} for v in vendors],
+        ),
+    ))
 
 
 @discovery.on_message(DiscoveryResult)
@@ -388,9 +471,8 @@ async def on_discovery_result(ctx: Context, sender: str, result: DiscoveryResult
         ctx.logger.warning(f"Ignoring DiscoveryResult from unknown sender {sender}")
         return
     observability.tag(result.trace, result.rfq_id)
-    user = ctx.storage.get(f"rfq:{result.rfq_id}")
-    s = ctx.storage.get(user) if user else None
-    if not s or s.get("rfq_id") != result.rfq_id:
+    user, s = _session_for(ctx, result.rfq_id)
+    if not s:
         ctx.logger.warning(f"[{result.rfq_id}] DiscoveryResult for an unknown or replaced request")
         return
     ctx.logger.info(
@@ -404,6 +486,7 @@ async def on_discovery_result(ctx: Context, sender: str, result: DiscoveryResult
             "Caterer search is having trouble right now. Send any message in a minute and I'll try again."
         ))
         s["stage"] = "collecting"
+        s.pop("searched_fp", None)
         ctx.storage.set(user, s)
         return
 
@@ -413,6 +496,7 @@ async def on_discovery_result(ctx: Context, sender: str, result: DiscoveryResult
         checklist["location"] = {"value": None, "status": "missing"}
         ask = open_fields(checklist)
         s["stage"], s["asked"] = "collecting", list(ask)
+        s.pop("searched_fp", None)
         ctx.storage.set(user, s)
         await ctx.send(user, card_message(
             "I couldn't find that location in Los Angeles. Could you give me a full address or venue name?",
@@ -422,10 +506,17 @@ async def on_discovery_result(ctx: Context, sender: str, result: DiscoveryResult
         return
 
     s["location"] = {"resolved": result.resolved_location, "lat": result.lat, "lng": result.lng}
-    s["vendors"] = [v.dict() for v in result.vendors]
+    seen, vendors = set(), []
+    for v in result.vendors:
+        e = vendor_entry(v)
+        if e["vendor_id"] not in seen:
+            seen.add(e["vendor_id"])
+            vendors.append(e)
+    s["vendors"] = vendors
+    s["stage"] = "picking"
     ctx.storage.set(user, s)
-    if result.vendors:
-        await ctx.send(user, text_message(vendor_list(result)))
+    if vendors:
+        await send_picker(ctx, user, s)
     else:
         await ctx.send(user, text_message(
             f"I couldn't find caterers near {result.resolved_location} right now. "
@@ -433,8 +524,263 @@ async def on_discovery_result(ctx: Context, sender: str, result: DiscoveryResult
         ))
 
 
+# ---- Picker -> Negotiator --------------------------------------------------
+
+def build_rfq(s: dict) -> RFQ:
+    cl = s["checklist"]
+    return RFQ(
+        rfq_id=s["rfq_id"],
+        version=s["version"],
+        event_date=cl["date"]["value"],
+        event_time=cl["time"]["value"],
+        location=s.get("location", {}).get("resolved") or cl["location"]["value"],
+        headcount=cl["headcount"]["value"],
+        budget_usd=cl["budget_usd"]["value"] or 0.0,  # 0 = no fixed budget
+        dietary=cl["dietary"]["value"],
+        allergies=cl["allergies"]["value"],
+        trace=s["trace"],
+    )
+
+
+async def pick_vendors(ctx: Context, user: str, s: dict, sel: dict, text: str) -> None:
+    vendors = s["vendors"]
+    if sel.get("action") == "select_all":
+        idx = list(range(len(vendors)))
+    else:
+        idx = [i for i in range(len(vendors)) if _truthy(sel.get(f"pick_{i}"))]
+        if not idx:  # planner prose: "picked pick_0 and pick_3" or caterer names
+            idx = sorted({int(m) for m in re.findall(r"\bpick_(\d+)\b", text) if int(m) < len(vendors)}
+                         | {i for i, v in enumerate(vendors) if v["display_name"].lower() in text.lower()})
+    if not idx:
+        await ctx.send(user, text_message("Tick at least one caterer, or tap \"Get quotes from all\"."))
+        await send_picker(ctx, user, s)
+        return
+
+    chosen = [vendors[i] for i in idx]
+    live = [v for v in chosen if v["live"]]
+    offline = [v for v in chosen if not v["live"]]
+    lines = []
+    if offline:
+        names = ", ".join(v["display_name"] for v in offline[:3]) + (" and others" if len(offline) > 3 else "")
+        lines.append(f"{len(offline)} of your picks ({names}) don't have a Haggle agent yet. "
+                     "Quote requests by email aren't switched on yet, so I've skipped them for now.")
+    if not live:
+        lines.append("None of the caterers you picked can quote live yet.")
+        await ctx.send(user, text_message(" ".join(lines)))
+        return
+
+    shortlist = sorted(v["vendor_id"] for v in live)
+    if s.get("shortlist") == shortlist:
+        # Same picks again (double click or replay): never re-send the RFQs.
+        if s.get("quotes"):
+            await send_carousel(ctx, user, s, "Here are your quotes.")
+        else:
+            await ctx.send(user, text_message("Still collecting quotes from those caterers."))
+        return
+    if s.get("shortlist"):
+        s["version"] += 1  # a new shortlist is a new round of quotes
+    for k in ("quotes", "ranked", "fits", "declined", "list_prices", "countering"):
+        s.pop(k, None)
+    s["shortlist"] = shortlist
+    s["stage"] = "quoting"
+
+    refs = [VendorRef(vendor_id=v["vendor_id"], name=v["display_name"], address=v["agent_address"],
+                      distance_mi=v["distance_mi"], rating=v["rating"]) for v in live]
+    ctx.storage.set(f"rfq:{s['rfq_id']}", user)
+    await ctx.send(NEGOTIATOR_ADDRESS, NegotiationRequest(rfq=build_rfq(s), vendors=refs, trace=s["trace"]))
+    ctx.logger.info(f"[{s['rfq_id']}] v{s['version']} negotiation request for {shortlist}")
+    lines.append(f"Asking {len(live)} caterer{'s' if len(live) > 1 else ''} for quotes. This takes up to 10 seconds.")
+    await ctx.send(user, text_message(" ".join(lines)))
+
+
+# ---- Quotes carousel, detail, counter -------------------------------------
+
+negotiation = Protocol(name="HaggleNegotiatorClient", version="0.1.0")
+
+
+def _vendor(s: dict, vid: str) -> dict:
+    return next((v for v in s.get("vendors", []) if v["vendor_id"] == vid), {})
+
+
+def _store_ranked(s: dict, ranked) -> None:
+    s["ranked"], s["fits"] = [], {}
+    for r in ranked:
+        vid = r.quote.vendor_id
+        s["quotes"][vid] = json.loads(r.quote.json())
+        s["list_prices"].setdefault(vid, r.quote.total_usd)
+        s["ranked"].append(vid)
+        s["fits"][vid] = r.fits_budget
+
+
+def can_negotiate(q: dict) -> bool:
+    return not q["estimate"] and q["round"] < 2 and q["status"] not in ("accepted", "needs_approval")
+
+
+def quote_view(s: dict, vid: str) -> dict:
+    q, v = s["quotes"][vid], _vendor(s, vid)
+    totals = [s["quotes"][x]["total_usd"] for x in s["ranked"]]
+    ratings = [_vendor(s, x).get("rating") for x in s["ranked"]]
+    badges = []
+    if len(totals) > 1 and q["total_usd"] == min(totals):
+        badges.append(("Cheapest", "success"))
+    if v.get("rating") and v["rating"] == max(r for r in ratings if r):
+        badges.append(("Top rated", "info"))
+    saved = s["list_prices"].get(vid, q["total_usd"]) - q["total_usd"]
+    if saved >= 0.01:
+        badges.append((f"Negotiated −{usd(saved)}", "success"))
+    if s["checklist"]["dietary"]["value"]:
+        badges.append(("Fits all diets", "info"))  # vendors decline when a diet can't be met
+    if not s["fits"].get(vid, True):
+        badges.append(("Over budget", "warning"))
+    if q["estimate"]:
+        badges.append(("Estimate · not confirmed", "warning"))
+    if q["status"] == "needs_approval":
+        badges.append(("Needs owner approval", "warning"))
+    sub = [f"#{s['ranked'].index(vid) + 1}"]
+    if v.get("rating") is not None:
+        sub.append(f"★ {v['rating']}")
+    if v.get("source") == "places":
+        sub.append(f"{v['distance_mi']} mi away")
+    return {
+        "vendor_id": vid,
+        "name": q["vendor_name"],
+        "photo_url": v.get("photo_url", ""),
+        "total_usd": q["total_usd"],
+        "per_head_usd": q["per_head_usd"],
+        "subtitle": " · ".join(sub),
+        "badges": badges,
+    }
+
+
+async def send_carousel(ctx: Context, user: str, s: dict, narration: str) -> None:
+    n = len(s["ranked"])
+    await ctx.send(user, card_message(
+        narration,
+        "carousel",
+        quotes_carousel(s["rfq_id"], f"{n} quote{'s' if n != 1 else ''} for {summary(s['checklist'])}",
+                        [quote_view(s, vid) for vid in s["ranked"]]),
+    ))
+
+
+def detail_rows(s: dict, vid: str) -> list[tuple[str, str]]:
+    q, v = s["quotes"][vid], _vendor(s, vid)
+    rows = [("Total", usd(q["total_usd"])), ("Per person", usd(q["per_head_usd"]))]
+    if q["delivery_fee_usd"]:
+        rows.append(("Delivery fee", usd(q["delivery_fee_usd"])))
+    for item in q["items"]:
+        label = "Standard" if item["group"] == "standard" else item["group"].replace("_", "-").capitalize()
+        rows.append((f"{label} · {item['package']}",
+                     f"{item['headcount']} × {usd(item['per_head_usd'])} = {usd(item['subtotal_usd'])}"))
+    if v.get("rating") is not None:
+        rows.append(("Rating", f"★ {v['rating']} ({v.get('rating_count') or 0} reviews)"))
+    if v.get("source") == "places":
+        rows.append(("Distance", f"{v['distance_mi']} mi"))
+    rows.append(("Status", "Estimate · not confirmed" if q["estimate"] else "Confirmed quote"))
+    if q["note"]:
+        rows.append(("Note", q["note"]))
+    return rows
+
+
+async def quote_action(ctx: Context, user: str, s: dict, action: str, sel: dict, text: str) -> None:
+    vid = sel.get("vendor_id")
+    if vid not in s["quotes"]:  # planner prose: find the vendor by id or name
+        vid = next((x for x in s["ranked"] if x in text or s["quotes"][x]["vendor_name"].lower() in text.lower()),
+                   None)
+    if action == "back" or vid is None:
+        await send_carousel(ctx, user, s, "Here are your quotes.")
+        return
+
+    q = s["quotes"][vid]
+    if action == "pick_quote":
+        view = quote_view(s, vid) | {"rows": detail_rows(s, vid)}
+        await ctx.send(user, card_message(
+            f"{q['vendor_name']}: {usd(q['total_usd'])} for {s['checklist']['headcount']['value']} guests.",
+            "detail",
+            quote_detail(s["rfq_id"], view, can_negotiate(q)),
+        ))
+        return
+
+    # negotiate
+    if s.get("countering"):
+        await ctx.send(user, text_message("Already negotiating. I'll show you the new price in a moment."))
+        return
+    if not can_negotiate(q):
+        reason = ("it's an estimate from an unclaimed caterer, so there's nothing to negotiate yet"
+                  if q["estimate"] else "this caterer has already given its best price")
+        await ctx.send(user, text_message(f"I can't negotiate with {q['vendor_name']}: {reason}."))
+        return
+    s["countering"] = vid
+    await ctx.send(NEGOTIATOR_ADDRESS, CounterRequest(rfq_id=s["rfq_id"], vendor_id=vid, trace=s["trace"]))
+    ctx.logger.info(f"[{s['rfq_id']}] counter request for {vid}")
+    await ctx.send(user, text_message(f"Asking {q['vendor_name']} for a better price..."))
+
+
+@negotiation.on_message(NegotiationResult)
+async def on_negotiation_result(ctx: Context, sender: str, result: NegotiationResult):
+    if sender != NEGOTIATOR_ADDRESS:
+        ctx.logger.warning(f"Ignoring NegotiationResult from unknown sender {sender}")
+        return
+    observability.tag(result.trace, result.rfq_id)
+    user, s = _session_for(ctx, result.rfq_id)
+    if not s or s.get("stage") != "quoting":
+        ctx.logger.warning(f"[{result.rfq_id}] NegotiationResult for an unknown or replaced request")
+        return
+    ctx.logger.info(f"[{result.rfq_id}] {len(result.ranked)} quotes, {len(result.declined)} declined")
+
+    s["quotes"], s["list_prices"], s["declined"] = {}, {}, dict(result.declined)
+    _store_ranked(s, result.ranked)
+    declined = "; ".join(f"{_vendor(s, vid).get('display_name', vid)}: {why}" for vid, why in s["declined"].items())
+    if not s["ranked"]:
+        s["stage"] = "picking"
+        ctx.storage.set(user, s)
+        await ctx.send(user, text_message(
+            "None of those caterers could quote" + (f" ({declined})" if declined else "") +
+            ". Pick others from the list, or say \"start over\"."
+        ))
+        return
+    s["stage"] = "choosing"
+    ctx.storage.set(user, s)
+    n = len(s["ranked"])
+    await send_carousel(ctx, user, s, f"{n} quote{'s' if n != 1 else ''} in." +
+                        (f" Couldn't quote: {declined}." if declined else ""))
+
+
+@negotiation.on_message(CounterResult)
+async def on_counter_result(ctx: Context, sender: str, result: CounterResult):
+    if sender != NEGOTIATOR_ADDRESS:
+        ctx.logger.warning(f"Ignoring CounterResult from unknown sender {sender}")
+        return
+    observability.tag(result.trace, result.rfq_id, result.vendor_id)
+    user, s = _session_for(ctx, result.rfq_id)
+    if not s or not s.get("quotes") or result.vendor_id not in s["quotes"]:
+        ctx.logger.warning(f"[{result.rfq_id}] CounterResult for an unknown request or vendor")
+        return
+    s.pop("countering", None)
+    vid = result.vendor_id
+    name = s["quotes"][vid]["vendor_name"]
+    before = s["quotes"][vid]["total_usd"]
+    if result.ranked:
+        _store_ranked(s, result.ranked)
+    elif result.quote:
+        s["quotes"][vid] = json.loads(result.quote.json())
+    after = s["quotes"][vid]["total_usd"]
+    ctx.logger.info(f"[{result.rfq_id}] counter {vid}: {before} -> {after} {result.declined_reason}")
+
+    if after < before:
+        narration = f"{name} came down from {usd(before)} to {usd(after)}."
+        if s["quotes"][vid]["status"] == "needs_approval":
+            narration += " The owner still has to approve this price."
+        elif s["quotes"][vid]["status"] == "accepted":
+            narration += " They accepted our offer."
+    else:
+        narration = f"{name} won't go lower" + (f": {result.declined_reason}." if result.declined_reason else ".")
+    ctx.storage.set(user, s)
+    await send_carousel(ctx, user, s, narration)
+
+
 agent.include(chat, publish_manifest=True)
 agent.include(discovery)
+agent.include(negotiation)
 
 if __name__ == "__main__":
     observability.init("concierge")

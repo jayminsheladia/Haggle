@@ -10,7 +10,10 @@ import json
 import re
 
 # Every action any Haggle card can send back.
-KNOWN_ACTIONS = ("submit_event", "pick_quote", "book", "negotiate", "confirm", "cancel", "back", "edit")
+KNOWN_ACTIONS = (
+    "submit_event", "select_vendors", "select_all", "pick_quote", "book", "negotiate", "confirm", "cancel",
+    "back", "edit",
+)
 
 
 def _as_dict(text: str) -> dict | None:
