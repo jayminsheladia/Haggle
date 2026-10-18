@@ -21,13 +21,20 @@ from uagents_core.contrib.protocols.chat import (
     chat_protocol_spec,
 )
 
+from shared import observability
 from shared.cards import DIETS, card_message, event_form, text_message
 from shared.llm import chat_json
+from shared.models import DiscoveryRequest, DiscoveryResult
 from shared.selection import parse_selection
 
 load_dotenv()
 
 LA = ZoneInfo("America/Los_Angeles")
+
+DISCOVERY_ADDRESS = os.getenv(
+    "DISCOVERY_ADDRESS", "agent1q27868llc79a2pncexj4z6nejtjw87rg4p3cv4tjt27q9vuh2s8w7clzg5y"
+)
+SHOW_VENDORS = 5
 
 # ---- Intake checklist ------------------------------------------------------
 # status: missing | needs_confirm | filled | offer | declined
@@ -336,8 +343,16 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
         await ctx.send(
             sender,
             text_message(f"Here's your request: {summary(checklist)}. "
-                         "No caterers are contacted until you confirm."),
+                         "Looking for caterers nearby. No caterers are contacted until you confirm."),
         )
+        # Searching is allowed before confirmation; contacting vendors is not.
+        s.setdefault("trace", observability.new_trace())
+        ctx.storage.set(f"rfq:{s['rfq_id']}", sender)
+        await ctx.send(
+            DISCOVERY_ADDRESS,
+            DiscoveryRequest(rfq_id=s["rfq_id"], location=checklist["location"]["value"], trace=s["trace"]),
+        )
+        ctx.logger.info(f"[{s['rfq_id']}] discovery request sent to {DISCOVERY_ADDRESS}")
     ctx.storage.set(sender, s)
 
 
@@ -346,7 +361,80 @@ async def on_ack(ctx: Context, sender: str, msg: ChatAcknowledgement):
     pass
 
 
+# ---- Discovery replies -----------------------------------------------------
+
+discovery = Protocol(name="HaggleDiscoveryClient", version="0.1.0")
+
+
+def vendor_list(result: DiscoveryResult) -> str:
+    lines = [f"I found {len(result.vendors)} caterers near {result.resolved_location}:"]
+    for i, v in enumerate(result.vendors[:SHOW_VENDORS], 1):
+        parts = [v.name]
+        if v.rating is not None:
+            parts.append(f"★ {v.rating}" + (f" ({v.rating_count})" if v.rating_count else ""))
+        if v.source == "places":
+            parts.append(f"{v.distance_mi} mi away")
+        lines.append(f"{i}. " + " · ".join(parts))
+    if len(result.vendors) > SHOW_VENDORS:
+        lines.append(f"…and {len(result.vendors) - SHOW_VENDORS} more.")
+    lines.append("No caterers have been contacted yet.")
+    return "\n".join(lines)
+
+
+@discovery.on_message(DiscoveryResult)
+async def on_discovery_result(ctx: Context, sender: str, result: DiscoveryResult):
+    if sender != DISCOVERY_ADDRESS:
+        ctx.logger.warning(f"Ignoring DiscoveryResult from unknown sender {sender}")
+        return
+    observability.tag(result.trace, result.rfq_id)
+    user = ctx.storage.get(f"rfq:{result.rfq_id}")
+    s = ctx.storage.get(user) if user else None
+    if not s or s.get("rfq_id") != result.rfq_id:
+        ctx.logger.warning(f"[{result.rfq_id}] DiscoveryResult for an unknown or replaced request")
+        return
+    ctx.logger.info(
+        f"[{result.rfq_id}] {len(result.vendors)} vendors from Discovery"
+        + (f"; error: {result.error}" if result.error else "")
+    )
+
+    if (result.lat is None or result.lng is None) and "could not find location" not in result.error:
+        # Search itself failed (Places down, crash): keep the request, let the user retry.
+        await ctx.send(user, text_message(
+            "Caterer search is having trouble right now. Send any message in a minute and I'll try again."
+        ))
+        s["stage"] = "collecting"
+        ctx.storage.set(user, s)
+        return
+
+    if result.lat is None or result.lng is None:
+        # Location couldn't be resolved: ask for it again instead of guessing.
+        checklist = s["checklist"]
+        checklist["location"] = {"value": None, "status": "missing"}
+        ask = open_fields(checklist)
+        s["stage"], s["asked"] = "collecting", list(ask)
+        ctx.storage.set(user, s)
+        await ctx.send(user, card_message(
+            "I couldn't find that location in Los Angeles. Could you give me a full address or venue name?",
+            "form",
+            event_form(s["rfq_id"], ask, {}),
+        ))
+        return
+
+    s["location"] = {"resolved": result.resolved_location, "lat": result.lat, "lng": result.lng}
+    s["vendors"] = [v.dict() for v in result.vendors]
+    ctx.storage.set(user, s)
+    if result.vendors:
+        await ctx.send(user, text_message(vendor_list(result)))
+    else:
+        await ctx.send(user, text_message(
+            f"I couldn't find caterers near {result.resolved_location} right now. "
+            "Try a nearby neighborhood, or say \"start over\"."
+        ))
+
+
 agent.include(chat, publish_manifest=True)
+agent.include(discovery)
 
 if __name__ == "__main__":
+    observability.init("concierge")
     agent.run()
