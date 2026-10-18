@@ -39,7 +39,7 @@ load_dotenv()
 CONCIERGE_ADDRESS = os.getenv(
     "CONCIERGE_ADDRESS", "agent1qtczn7424hmp43jqetnl9pydsmqhcfzfg8muzyl5ajxwyep0mt7lxxewe9k"
 )
-VENDOR_TIMEOUT_S = 10
+VENDOR_TIMEOUT_S = 30
 LA = ZoneInfo("America/Los_Angeles")
 QUOTE_REPLY_HOURS = 48  # how long a caterer gets to answer a quote request (capped at 2 days before the event)
 

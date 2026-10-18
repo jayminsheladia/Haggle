@@ -717,9 +717,12 @@ async def start_negotiation(ctx: Context, user: str, s: dict) -> None:
     refs = [VendorRef(vendor_id=v["vendor_id"], name=v["display_name"], address=v["agent_address"],
                       distance_mi=v["distance_mi"], claimed=v.get("claimed", False), rating=v["rating"])
             for v in live]
-    await ctx.send(NEGOTIATOR_ADDRESS, NegotiationRequest(rfq=build_rfq(s), vendors=refs, trace=s["trace"]))
+    request = NegotiationRequest(rfq=build_rfq(s), vendors=refs, trace=s["trace"])
+    await ctx.send(NEGOTIATOR_ADDRESS, request)
+    s["quoting"] = {"request": request.json(), "sent_at": time.time(), "resent": 0}
+    ctx.storage.set("quoting_users", sorted(set(ctx.storage.get("quoting_users") or []) | {user}))
     ctx.logger.info(f"[{s['rfq_id']}] v{s['version']} negotiation request for {[r.vendor_id for r in refs]}")
-    lines.append(f"Asking {len(live)} caterer{'s' if len(live) > 1 else ''} for quotes. This takes up to 10 seconds.")
+    lines.append(f"Asking {len(live)} caterer{'s' if len(live) > 1 else ''} for quotes. Usually a few seconds, at most 30.")
     await ctx.send(user, text_message(" ".join(lines)))
 
 
@@ -1177,6 +1180,36 @@ async def expire_payment_requests(ctx: Context):
                                          if (ctx.storage.get(u) or {}).get("booking", {}).get("requested_at")])
 
 
+QUOTE_RESEND_AFTER_S = 45  # the Negotiator waits up to 30 s per vendor (in parallel)
+
+
+@agent.on_interval(period=15)
+async def resend_lost_negotiation_requests(ctx: Context):
+    """No NegotiationResult 45 s after asking (a message lost in the mailbox): ask again, up to twice. The Negotiator
+    answers a repeat with its stored result, so vendors are never asked twice for the same request."""
+    still = []
+    for user in ctx.storage.get("quoting_users") or []:
+        s = ctx.storage.get(user)
+        q = (s or {}).get("quoting")
+        if not s or s.get("stage") != "quoting" or not q:
+            continue
+        if time.time() - q["sent_at"] > QUOTE_RESEND_AFTER_S:
+            if q["resent"] >= 2:
+                s.pop("quoting")
+                s.pop("shortlist", None)  # so tapping Get quotes with the same picks asks again
+                s["stage"] = "picking"
+                ctx.storage.set(user, s)
+                await ctx.send(user, text_message("I couldn't get the quotes back just now (the agent network is slow). "
+                                                  "Tap Get quotes again in a minute."))
+                continue
+            q["resent"], q["sent_at"] = q["resent"] + 1, time.time()
+            await ctx.send(NEGOTIATOR_ADDRESS, NegotiationRequest.parse_raw(q["request"]))
+            ctx.logger.warning(f"[{s['rfq_id']}] no quotes after {QUOTE_RESEND_AFTER_S}s; resent the request ({q['resent']})")
+            ctx.storage.set(user, s)
+        still.append(user)
+    ctx.storage.set("quoting_users", still)
+
+
 @booker.on_message(BookingResult)
 async def on_booking_result(ctx: Context, sender: str, result: BookingResult):
     if sender != BOOKER_ADDRESS:
@@ -1440,6 +1473,7 @@ async def on_negotiation_result(ctx: Context, sender: str, result: NegotiationRe
         ctx.logger.warning(f"[{result.rfq_id}] NegotiationResult for an unknown or replaced request")
         return
     ctx.logger.info(f"[{result.rfq_id}] {len(result.ranked)} quotes, {len(result.declined)} declined")
+    s.pop("quoting", None)
 
     s["quotes"], s["list_prices"], s["declined"] = {}, {}, dict(result.declined)
     _store_ranked(s, result.ranked)
@@ -1470,6 +1504,15 @@ async def on_counter_result(ctx: Context, sender: str, result: CounterResult):
         return
     observability.tag(result.trace, result.rfq_id, result.vendor_id)
     user, s = _session_for(ctx, result.rfq_id)
+    if (s and s.get("stage") == "choosing" and result.quote and result.vendor_id not in s.get("quotes", {})
+            and result.vendor_id in s.get("shortlist", []) and result.ranked):
+        # A caterer answered after the Negotiator stopped waiting: add its quote instead of dropping it.
+        s.get("declined", {}).pop(result.vendor_id, None)
+        _store_ranked(s, result.ranked)
+        ctx.storage.set(user, s)
+        ctx.logger.info(f"[{result.rfq_id}] late quote from {result.vendor_id} added")
+        await send_carousel(ctx, user, s, f"{result.quote.vendor_name}'s quote just came in.")
+        return
     if not s or not s.get("quotes") or result.vendor_id not in s["quotes"]:
         ctx.logger.warning(f"[{result.rfq_id}] CounterResult for an unknown request or vendor")
         return

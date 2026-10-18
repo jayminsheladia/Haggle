@@ -21,7 +21,7 @@ from shared.models import (
     NegotiationResult, Quote, RankedQuote,
 )
 
-QUOTE_TIMEOUT_S = 10
+QUOTE_TIMEOUT_S = 30  # per vendor, all in parallel; replies go through the Agentverse mailbox and can lag
 MAX_ROUNDS = 3  # vendor rounds per quote: open, push, then "check with the owner"
 EXCHANGES_PER_TAP = 2  # one "Negotiate lower" runs up to two back-and-forths
 DEFAULT_DISCOUNT = 0.10  # ask for 10% off when there is no budget gap to close
@@ -223,6 +223,11 @@ def make_negotiator(**agent_kwargs) -> Agent:
             ctx.logger.warning(f"{q.rfq_id}: unsolicited quote from unknown vendor {sender[:16]}")
             return
         q = q.copy(update={"vendor_id": vid})
+        if vid in st["quotes"]:
+            old = Quote.parse_raw(st["quotes"][vid])
+            if (old.total_usd, old.status, old.round) == (q.total_usd, q.status, q.round):
+                ctx.logger.info(f"{q.rfq_id} {vid}: repeated quote (mailbox redelivery), ignored")
+                return
         st["quotes"][vid] = q.json()
         st["declined"].pop(vid, None)
         ctx.storage.set(key, st)
@@ -234,6 +239,8 @@ def make_negotiator(**agent_kwargs) -> Agent:
         key, st, vid = _vendor_state(ctx, sender, d.rfq_id, d.version)
         if not st or not vid:
             return
+        if st["declined"].get(vid) == d.reason and vid not in st["quotes"]:
+            return  # repeated decline (mailbox redelivery)
         current = Quote.parse_raw(st["quotes"][vid]) if vid in st["quotes"] else None
         if current and current.status == "needs_approval":
             # The owner said no to the change: the earlier price stands.
