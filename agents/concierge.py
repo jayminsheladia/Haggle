@@ -495,11 +495,11 @@ def merge_vendors(entries: list[dict]) -> list[dict]:
     return list(merged.values())
 
 
-PICKER_PAGE_SIZE = 4
+PICKER_PAGE_SIZE = 3  # one full row of the 3-wide grid, like a slider
 
 
 async def send_picker(ctx: Context, user: str, s: dict, page: int = 0) -> None:
-    """Send one page of the caterer picker (PICKER_PAGE_SIZE caterers, Previous / Next)."""
+    """Send one page of the caterer picker (one row of PICKER_PAGE_SIZE caterers, Prev / Next)."""
     vendors = s["vendors"]
     pages = max(1, -(-len(vendors) // PICKER_PAGE_SIZE))
     page = min(max(page, 0), pages - 1)
