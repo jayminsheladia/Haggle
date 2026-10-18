@@ -132,8 +132,9 @@ class CounterResult(Model):
     quote: Optional[Quote] = None  # None if the vendor declined
     declined_reason: str = ""
     ranked: List[RankedQuote] = []  # refreshed ranking
-    target_usd: float = 0.0  # what the Negotiator asked for in this round (0 = no counter was sent)
-    reason: str = ""  # why it asked for that, as said to the vendor
+    target_usd: float = 0.0  # what the Negotiator last asked for (0 = no counter was sent)
+    reason: str = ""  # what it said with that ask
+    transcript: List[List[str]] = []  # the haggle as [speaker, text] lines, in order
     trace: str = ""
 
 

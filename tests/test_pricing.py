@@ -98,19 +98,27 @@ class Rules(unittest.TestCase):
 
 
 class Counter(unittest.TestCase):
-    def test_floor(self):
-        self.assertEqual(floor_price(1000, OwnerRules(floor_discount_pct=12)), 880.0)
+    def test_floor_depends_on_order_size(self):
+        rules = OwnerRules(floor_discount_pct=12)
+        self.assertEqual(floor_price(300, rules), 300.0)  # small order: no discount
+        self.assertEqual(floor_price(600, rules), 564.0)  # mid: half of 12% = 6%
+        self.assertEqual(floor_price(1000, rules), 904.0)  # 80% of 12% = 9.6%
+        self.assertEqual(floor_price(2000, rules), 1760.0)  # big: the full 12%
 
     def test_accept_at_or_above_floor(self):
-        self.assertEqual(counter_response(1000, 900, 880, 1), ("accept", 900))
-        self.assertEqual(counter_response(1000, 880, 880, 1), ("accept", 880))
+        self.assertEqual(counter_response(1000, 950, 904, 1), ("accept", 950))
+        self.assertEqual(counter_response(1000, 904, 904, 1), ("accept", 904))
 
-    def test_meet_halfway_never_below_floor(self):
-        self.assertEqual(counter_response(1000, 800, 880, 1), ("counter", 900.0))
-        self.assertEqual(counter_response(1000, 500, 880, 1), ("counter", 880))
+    def test_meet_halfway_then_best_then_decline(self):
+        self.assertEqual(counter_response(1000, 800, 904, 1), ("counter", 904))  # halfway 900 is below the floor
+        self.assertEqual(counter_response(1000, 850, 880, 1), ("counter", 925.0))
+        self.assertEqual(counter_response(925, 850, 880, 2), ("best", 880))
+        self.assertEqual(counter_response(880, 850, 870, 3), ("decline", "floor reached"))
 
-    def test_decline_after_round_2(self):
-        self.assertEqual(counter_response(900, 800, 880, 2), ("decline", "floor reached"))
+    def test_no_room_keeps_the_price_then_owner(self):
+        self.assertEqual(counter_response(300, 250, 300, 1), ("no_room", 300))
+        self.assertEqual(counter_response(300, 250, 300, 2), ("no_room", 300))
+        self.assertEqual(counter_response(773.14, 749.95, 773.14, 3), ("decline", "floor reached"))
 
 
 if __name__ == "__main__":

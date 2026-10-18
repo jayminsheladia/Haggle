@@ -792,7 +792,8 @@ def _store_ranked(s: dict, ranked) -> None:
 
 
 def can_negotiate(q: dict) -> bool:
-    return not q["estimate"] and q["round"] < 2 and q["status"] not in ("accepted", "needs_approval")
+    # Rounds 1-2 happen on the first tap; a second tap asks the vendor to check with its owner (round 3).
+    return not q["estimate"] and q["round"] < 3 and q["status"] not in ("accepted", "needs_approval")
 
 
 def on_request(q: dict) -> bool:
@@ -873,8 +874,6 @@ def detail_rows(s: dict, vid: str) -> list[tuple[str, str]]:
         rows.append(("Distance", f"{v['distance_mi']} mi"))
     if q.get("conflicts"):
         rows.append(("Can't confirm", "; ".join(q["conflicts"])))
-    for speaker, said in s.get("negolog", {}).get(vid, []):
-        rows.append((f"💬 {speaker}", said))
     for line in q.get("menu_preview", []):
         rows.append(("Menu", line))
     if q.get("menu_url"):
@@ -1232,13 +1231,6 @@ async def on_negotiation_result(ctx: Context, sender: str, result: NegotiationRe
 
     s["quotes"], s["list_prices"], s["declined"] = {}, {}, dict(result.declined)
     _store_ranked(s, result.ranked)
-    cl = s["checklist"]
-    asked = f"Quote request: {display('headcount', cl['headcount']['value'])}, {summary(cl).split(' · ')[0]}"
-    s["negolog"] = {}
-    for vid in s["ranked"]:
-        q = s["quotes"][vid]
-        answer = "No public prices: menu only" if on_request(q) else f"{usd(q['total_usd'])}" + (f" ({q['note']})" if q["note"] else "")
-        s["negolog"][vid] = [["Haggle", asked], [q["vendor_name"], answer]]
     no_prices = [_vendor(s, vid).get("display_name", vid) for vid, why in s["declined"].items() if NO_PRICES in why]
     declined = "; ".join(f"{_vendor(s, vid).get('display_name', vid)}: {why}"
                          for vid, why in s["declined"].items() if NO_PRICES not in why)
@@ -1295,27 +1287,16 @@ async def on_counter_result(ctx: Context, sender: str, result: CounterResult):
         narration = f"{name} can't do this one" + (f": {result.declined_reason}." if result.declined_reason else ".")
     else:
         narration = f"{name} won't go lower" + (f": {result.declined_reason}." if result.declined_reason else ".")
-    log = s.setdefault("negolog", {}).setdefault(vid, [])
-    lines = []
-    if result.target_usd:
-        ask = f"Could you do {usd(result.target_usd)}?" + (f" ({result.reason})" if result.reason else "")
-        log.append(["Haggle", ask])
-        lines.append(f"🤖 Haggle → {name}: {ask}")
-        if status == "declined":
-            said = result.declined_reason or "We can't do this one."
-        elif status == "needs_approval":
-            said = "That's below what I can agree to on my own. Let me check with the owner."
-        else:
-            said = (s["quotes"][vid].get("note") or "") + (f" New total: {usd(after)}." if after != before else "")
-        log.append([name, said.strip()])
-        lines.append(f"🏪 {name} → Haggle: {said.strip()}")
-    else:  # the owner answered a pending approval
-        said = (s["quotes"].get(vid, {}).get("note") or result.declined_reason or "") + (
-            f" Price: {usd(after)}." if status != "declined" else "")
-        log.append([f"{name} (owner)", said.strip()])
-        lines.append(f"🏪 {name} (owner) → Haggle: {said.strip()}")
     ctx.storage.set(user, s)
-    transcript = "Negotiation with " + name + ":\n" + "\n".join(lines) + "\n\n" + narration
+    lines = []
+    for speaker, said in result.transcript:
+        icon, arrow = ("🤖", f"Haggle → {name}") if speaker == "Haggle" else ("🏪", f"{name} → Haggle")
+        lines.append(f"{icon} **{arrow}:** {said}")
+    if not result.transcript and not result.target_usd:  # the owner answered a pending approval
+        note = s["quotes"].get(vid, {}).get("note") or result.declined_reason
+        lines.append(f"🏪 **{name} (owner) → Haggle:** {note}")
+    # One message per line (ASI:One joins single newlines), the result last; the card follows.
+    transcript = f"**Negotiating with {name}**\n\n" + "\n\n".join(lines) + f"\n\n**Result:** {narration}"
     if vid not in s["quotes"]:
         await ctx.send(user, text_message(transcript))
         if s["ranked"]:

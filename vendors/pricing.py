@@ -147,18 +147,43 @@ def check_rules(rules: OwnerRules, rfq: RFQ, now: Optional[datetime] = None,
     return violations
 
 
+# How much of the owner's maximum discount a vendor will give depends on the order size: no discount on small
+# orders, a little on mid-size ones, the full amount on big ones.
+SMALL_ORDER_USD = 400
+SIZE_TIERS = ((800, 0.5), (1500, 0.8))  # (order total below, share of the owner's floor discount)
+
+
+def discount_room_pct(list_price: float, rules: OwnerRules) -> float:
+    """The most this vendor will take off this order, in percent of the list price."""
+    if list_price < SMALL_ORDER_USD:
+        return 0.0
+    share = next((s for below, s in SIZE_TIERS if list_price < below), 1.0)
+    return round(rules.floor_discount_pct * share, 2)
+
+
 def floor_price(list_price: float, rules: OwnerRules) -> float:
-    return round(list_price * (1 - rules.floor_discount_pct / 100), 2)
+    """Lowest price the vendor accepts on its own for this order (never below the owner's floor)."""
+    return round(list_price * (1 - discount_room_pct(list_price, rules) / 100), 2)
 
 
-CounterAction = Literal["accept", "counter", "decline"]
+CounterAction = Literal["accept", "counter", "best", "no_room", "decline"]
 
 
 def counter_response(last_quote: float, target: float, floor: float, round_: int) -> tuple[CounterAction, float | str]:
-    """The counter-offer rule: accept at the target if it's at or above the floor; otherwise meet halfway
-    (never below the floor) for the first round; after that, decline."""
-    if target >= floor:
+    """The counter-offer rule, round by round:
+    - target at or above the floor: accept the target
+    - round 3+: decline ("floor reached"; a claimed vendor asks its owner)
+    - no room at all (small order, or already at the floor): keep the price ("no_room")
+    - round 1: meet halfway, never below the floor
+    - round 2: the floor itself, as the vendor's best price ("best")."""
+    if target >= floor and floor < last_quote:
         return "accept", round(min(target, last_quote), 2)
-    if round_ < 2:
+    if round_ >= 3:
+        return "decline", "floor reached"  # pushed past its own limit: a claimed vendor asks its owner
+    if floor >= last_quote:
+        return "no_room", round(last_quote, 2)
+    if round_ <= 1:
         return "counter", round(max(floor, (last_quote + target) / 2), 2)
+    if round_ == 2:
+        return "best", round(floor, 2)
     return "decline", "floor reached"

@@ -35,7 +35,7 @@ from shared.llm import chat_json, chat_text
 from shared.menu_schema import OwnerRules, VendorMenu
 from shared.models import RFQ, Accept, Counter, Decline, OwnerReply, OwnerReplyResult, Quote
 from shared.selection import parse_selection
-from vendors.pricing import UNLABELED, check_rules, counter_response, floor_price, price_for
+from vendors.pricing import SMALL_ORDER_USD, UNLABELED, check_rules, counter_response, floor_price, price_for
 
 PROTOCOL_NAME = "HaggleNegotiation"
 PROTOCOL_VERSION = "0.1.0"
@@ -143,6 +143,26 @@ async def llm_owner_decision(text: str) -> Optional[tuple[str, Optional[float]]]
     if data["decision"] == "counter" and not isinstance(price, (int, float)):
         return None
     return data["decision"], float(price) if price is not None else None
+
+
+def haggle_note(action: str, price: float, headcount: int, small: bool = False) -> str:
+    """What the vendor says back (varied wording; every number comes from code)."""
+    p = usd(price)
+    lines = {
+        "accept": [f"Deal. {p} works for us.", f"You've got it: {p}.", f"Okay, {p} it is. Looking forward to it."],
+        "counter": [f"That's a bit too low for us. We can come down to {p}.",
+                    f"We can't go that far, but we can do {p} for {headcount} guests.",
+                    f"Meet us in the middle? {p}."],
+        "best": [f"{p} is really the best we can do on this order.",
+                 f"We've sharpened our pencil: {p} is our final price.",
+                 f"Lowest we can go is {p}. Ingredients and staff for {headcount} add up."],
+        "no_room": ([f"For an order this size we can't take anything off, sorry. It stays at {p}.",
+                     f"Small orders are already at our best rate, so {p} is firm."] if small else
+                    [f"We're already at our lowest for this order: {p}.", f"Sorry, {p} is as low as we go."]),
+        "owner": [f"That's below what I can agree to on my own. Let me check {p} with the owner.",
+                  f"I'll have to ask the owner about {p}. Give me a moment."],
+    }[action]
+    return lines[(int(price * 100) + headcount) % len(lines)]  # stable variety per offer
 
 
 def _strip_mention(text: str) -> str:
@@ -347,13 +367,16 @@ def make_vendor_agent(menu: VendorMenu | dict, seed: str, on_menu_change: Option
             rfq = RFQ.parse_raw(st["rfq"])
             floor = floor_price(Quote.parse_raw(st["list"]).total_usd, menu.rules)
             action, value = counter_response(current.total_usd, c.target_usd, floor, c.round)
-            if action == "decline":
+            if action == "no_room":  # small order (or already at the floor): the price stands
+                reply = current.copy(update={"round": c.round, "status": "countered", "note": haggle_note(
+                    "no_room", current.total_usd, rfq.headcount, small=current.total_usd < SMALL_ORDER_USD)})
+            elif action == "decline":
                 a = await create_approval(
                     ctx, "counter", rfq, f"customer offers {usd(c.target_usd)} for {rfq.headcount} guests on "
                                          f"{rfq.event_date} (your floor is {usd(floor)}, current quote "
                                          f"{usd(current.total_usd)})", c.target_usd, sender)
                 reply = current.copy(update={"round": c.round, "status": "needs_approval",
-                                             "note": f"Asked the owner about {usd(c.target_usd)} ({a['approval_id']})"})
+                                             "note": haggle_note("owner", c.target_usd, rfq.headcount)})
             elif value > menu.rules.auto_approve_limit_usd:
                 a = await create_approval(
                     ctx, "counter", rfq, f"{usd(value)} for {rfq.headcount} guests on {rfq.event_date} is above your "
@@ -364,7 +387,7 @@ def make_vendor_agent(menu: VendorMenu | dict, seed: str, on_menu_change: Option
                 reply = current.copy(update={
                     "total_usd": value, "per_head_usd": round(value / max(rfq.headcount, 1), 2), "round": c.round,
                     "status": "accepted" if action == "accept" else "countered",
-                    "note": "Deal!" if action == "accept" else f"We can meet you at {usd(value)}.",
+                    "note": haggle_note(action, value, rfq.headcount),
                 })
             st["current"] = reply.json()
             ctx.storage.set(k, st)

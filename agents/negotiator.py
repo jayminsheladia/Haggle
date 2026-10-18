@@ -22,8 +22,12 @@ from shared.models import (
 )
 
 QUOTE_TIMEOUT_S = 10
-MAX_ROUNDS = 2
+MAX_ROUNDS = 3  # vendor rounds per quote: open, push, then "check with the owner"
+EXCHANGES_PER_TAP = 2  # one "Negotiate lower" runs up to two back-and-forths
 DEFAULT_DISCOUNT = 0.10  # ask for 10% off when there is no budget gap to close
+# Opening ask without a budget gap, by order size: bigger orders ask for more.
+ASK_BY_SIZE = ((800, 0.06), (1500, 0.10))  # (order total below, discount asked); above: 15%
+BIG_ORDER_ASK = 0.15
 
 
 def rank_quotes(quotes: List[Quote], budget_usd: float, ratings: Dict[str, Optional[float]]) -> List[RankedQuote]:
@@ -47,18 +51,41 @@ def rank_quotes(quotes: List[Quote], budget_usd: float, ratings: Dict[str, Optio
     return [RankedQuote(rank=i + 1, quote=t[4], fits_budget=t[5], score=t[6]) for i, t in enumerate(ranked)]
 
 
+def _usd(x: float) -> str:
+    return f"${x:,.2f}"
+
+
 def pick_target(quote: Quote, budget_usd: float) -> float:
-    """Counter target: the budget if the quote is over it, else ask for DEFAULT_DISCOUNT off."""
+    """Opening counter target: the budget if the quote is over it, else a discount that grows with order size."""
     if budget_usd > 0 and quote.total_usd > budget_usd:
         return round(budget_usd, 2)
-    return round(quote.total_usd * (1 - DEFAULT_DISCOUNT), 2)
+    pct = next((p for below, p in ASK_BY_SIZE if quote.total_usd < below), BIG_ORDER_ASK)
+    return round(quote.total_usd * (1 - pct), 2)
 
 
-def target_reason(quote: Quote, budget_usd: float, target: float) -> str:
-    """What the Negotiator tells the vendor about its ask (plain words; the numbers come from code)."""
-    if budget_usd > 0 and quote.total_usd > budget_usd and target == round(budget_usd, 2):
-        return f"the customer's budget is ${budget_usd:,.2f}"
-    return f"we're asking about {DEFAULT_DISCOUNT:.0%} off your quote of ${quote.total_usd:,.2f}"
+def opening_ask(quote: Quote, budget_usd: float, headcount: int) -> tuple[float, str]:
+    """(target, what Haggle says). Wording only; the target comes from pick_target."""
+    target = pick_target(quote, budget_usd)
+    if budget_usd > 0 and quote.total_usd > budget_usd:
+        return target, (f"Thanks for the quote of {_usd(quote.total_usd)}. Our customer's budget is {_usd(budget_usd)} "
+                        f"for {headcount} guests. Could you do {_usd(target)}?")
+    return target, (f"Thanks for the quote of {_usd(quote.total_usd)}. We're comparing a few caterers for this "
+                    f"{headcount}-guest event. How close can you get to {_usd(target)}?")
+
+
+def push_ask(offer: float, last_target: float, budget_usd: float) -> tuple[float, str]:
+    """Haggle's second ask: halfway between its last ask and the vendor's offer."""
+    target = round((offer + last_target) / 2, 2)
+    if budget_usd > 0 and offer > budget_usd:
+        return target, (f"Appreciate it. {_usd(offer)} is still over the {_usd(budget_usd)} budget. "
+                        f"Can you meet us at {_usd(target)}?")
+    return target, f"Thanks, that's closer. If you can do {_usd(target)}, we'll recommend you to the customer."
+
+
+def owner_ask(offer: float, budget_usd: float) -> tuple[float, str]:
+    """Haggle's last ask, after the vendor's best price: go to the owner."""
+    target = round(budget_usd, 2) if 0 < budget_usd < offer else round(offer * 0.97, 2)
+    return target, f"Understood. Is there any way to get to {_usd(target)}? Could you check with the owner?"
 
 
 def _ranked_from_state(st: dict) -> List[RankedQuote]:
@@ -111,17 +138,19 @@ def make_negotiator(**agent_kwargs) -> Agent:
 
     @proto.on_message(CounterRequest, replies=CounterResult)
     async def on_counter(ctx: Context, sender: str, msg: CounterRequest):
+        """One "Negotiate lower": up to EXCHANGES_PER_TAP rounds of ask -> vendor answer, stopping when the vendor
+        accepts, gives its best price, has no room, declines, or needs its owner. The transcript goes back too."""
         observability.tag(msg.trace, msg.rfq_id, msg.vendor_id)
         version = ctx.storage.get(f"neg:{msg.rfq_id}:latest")
         key = f"neg:{msg.rfq_id}:v{version}"
         st = ctx.storage.get(key) if version else None
-
+        transcript: list[list[str]] = []
         asked = {"target_usd": 0.0, "reason": ""}
 
         def result(quote=None, reason=""):
             return CounterResult(rfq_id=msg.rfq_id, vendor_id=msg.vendor_id, quote=quote,
                                  declined_reason=reason, ranked=_ranked_from_state(st) if st else [],
-                                 trace=msg.trace, **asked)
+                                 transcript=transcript, trace=msg.trace, **asked)
 
         if not st or msg.vendor_id not in st["quotes"]:
             await ctx.send(sender, result(reason="no open quote from this vendor"))
@@ -130,27 +159,45 @@ def make_negotiator(**agent_kwargs) -> Agent:
         if current.estimate:
             await ctx.send(sender, result(current, "unclaimed vendor: estimate only, no negotiation"))
             return
-        if current.round >= MAX_ROUNDS or current.status == "accepted":
+        if current.round >= MAX_ROUNDS or current.status in ("accepted", "needs_approval"):
             await ctx.send(sender, result(current, "negotiation finished"))
             return
 
-        target = msg.target_usd or pick_target(current, st["rfq"]["budget_usd"])
-        why = target_reason(current, st["rfq"]["budget_usd"], target)
-        asked.update(target_usd=target, reason=why)
-        counter = Counter(rfq_id=msg.rfq_id, vendor_id=msg.vendor_id, target_usd=target, reason=why,
-                          round=current.round + 1, version=st["rfq"]["version"], trace=msg.trace)
-        reply, _ = await ctx.send_and_receive(st["vendors"][msg.vendor_id]["address"], counter,
-                                              response_type={Quote, Decline}, timeout=QUOTE_TIMEOUT_S)
-        if isinstance(reply, Quote):
-            reply = reply.copy(update={"vendor_id": msg.vendor_id})
-            st["quotes"][msg.vendor_id] = reply.json()
-            ctx.storage.set(key, st)
-            ctx.logger.info(f"{msg.rfq_id} {msg.vendor_id}: ${current.total_usd} -> ${reply.total_usd} "
-                            f"({reply.status}, target ${target})")
-            await ctx.send(sender, result(reply))
-        else:
-            reason = reply.reason if isinstance(reply, Decline) else f"no reply in {QUOTE_TIMEOUT_S}s"
-            await ctx.send(sender, result(current, reason))
+        budget, heads = st["rfq"]["budget_usd"], st["rfq"]["headcount"]
+        asks = st.setdefault("asks", {})
+        reason = ""
+        for _ in range(EXCHANGES_PER_TAP):
+            rnd = current.round + 1
+            if rnd > MAX_ROUNDS:
+                break
+            if rnd == 1:
+                target, said = (msg.target_usd, f"Could you do {_usd(msg.target_usd)}?") if msg.target_usd \
+                    else opening_ask(current, budget, heads)
+            elif rnd == 2:
+                target, said = push_ask(current.total_usd, asks.get(msg.vendor_id, current.total_usd), budget)
+            else:
+                target, said = owner_ask(current.total_usd, budget)
+            asks[msg.vendor_id] = target
+            asked.update(target_usd=target, reason=said)
+            transcript.append(["Haggle", said])
+            counter = Counter(rfq_id=msg.rfq_id, vendor_id=msg.vendor_id, target_usd=target, reason=said,
+                              round=rnd, version=st["rfq"]["version"], trace=msg.trace)
+            reply, _ = await ctx.send_and_receive(st["vendors"][msg.vendor_id]["address"], counter,
+                                                  response_type={Quote, Decline}, timeout=QUOTE_TIMEOUT_S)
+            if not isinstance(reply, Quote):
+                reason = reply.reason if isinstance(reply, Decline) else f"no reply in {QUOTE_TIMEOUT_S}s"
+                transcript.append([current.vendor_name, reason])
+                break
+            before = current.total_usd
+            current = reply.copy(update={"vendor_id": msg.vendor_id})
+            st["quotes"][msg.vendor_id] = current.json()
+            transcript.append([current.vendor_name, current.note])
+            ctx.logger.info(f"{msg.rfq_id} {msg.vendor_id} r{rnd}: asked ${target}, got ${current.total_usd} "
+                            f"({current.status})")
+            if current.status in ("accepted", "needs_approval") or current.total_usd >= before or rnd >= 2:
+                break  # a deal, the owner, no movement, or the vendor's best price: the user decides next
+        ctx.storage.set(key, st)
+        await ctx.send(sender, result(current, reason))
 
     def _vendor_state(ctx: Context, sender: str, rfq_id: str, version: int):
         """The negotiation state and our vendor_id for a vendor's later (unsolicited) message."""
