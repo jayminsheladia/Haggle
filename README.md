@@ -11,8 +11,8 @@ Haggle is a multi-agent group catering marketplace for Los Angeles, built on Fet
 
 | Agent | File | Address | Agentverse profile |
 |---|---|---|---|
-| Concierge `@haggle` | `agents/concierge.py` | `agent1qtczn7424hmp43jqetnl9pydsmqhcfzfg8muzyl5ajxwyep0mt7lxxewe9k` | _TBD_ |
-| Discovery | `agents/discovery.py` | _TBD_ | _TBD_ |
+| Concierge `@haggle` | `agents/concierge.py` | `agent1qtczn7424hmp43jqetnl9pydsmqhcfzfg8muzyl5ajxwyep0mt7lxxewe9k` | [profile](https://agentverse.ai/agents/details/agent1qtczn7424hmp43jqetnl9pydsmqhcfzfg8muzyl5ajxwyep0mt7lxxewe9k/profile) |
+| Discovery | `agents/discovery.py` | `agent1q27868llc79a2pncexj4z6nejtjw87rg4p3cv4tjt27q9vuh2s8w7clzg5y` | [profile](https://agentverse.ai/agents/details/agent1q27868llc79a2pncexj4z6nejtjw87rg4p3cv4tjt27q9vuh2s8w7clzg5y/profile) |
 | Vendor Agent Factory | `agents/factory.py` | _TBD_ | _TBD_ |
 | Negotiator | `agents/negotiator.py` | _TBD_ | _TBD_ |
 | Booker | `agents/booker.py` | _TBD_ | _TBD_ |
@@ -59,11 +59,14 @@ Run every agent from the repo root as a module:
 
 ```bash
 python -m agents.concierge   # @haggle, port 8001
+python -m agents.discovery   # Discovery, port 8002
 ```
 
 _TBD — the other agents and the vendor host._
 
 ## Test
+
+Discovery (with the agent running): `python -m scripts.test_discovery "Ackerman Union, UCLA"` sends one search and prints the caterers it returns.
 
 _TBD — how to run a full request → quote → negotiate → pay flow in ASI:One (Stripe test card `4242 4242 4242 4242`)._
 
@@ -75,6 +78,7 @@ agents/        the 6 Haggle agents (mailbox mode, one server)
 tools/         menu matching, review summary, location
 vendors/       vendor agent template, Bureau host, vendors/data/*.json menus
 integrations/  Stripe, Google Places, email, Photon, calendar
+scripts/       test scripts (send one message to a running agent)
 photon-bridge/ TypeScript bridge (only if Photon has no REST API)
 data/          food_rescue_orgs.json
 docs/          build plan, demo script, observability notes
