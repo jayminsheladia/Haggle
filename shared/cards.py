@@ -250,39 +250,28 @@ def picker_carousel(rfq_id: str, location: str, vendors: list[dict]) -> dict:
 
 
 
-def picker_page(rfq_id: str, location: str, vendors: list[dict], page: int, pages: int, picked: list[str]) -> dict:
-    """One page of the caterer picker: one row of up to 3 photo tiles (choice_grid, multi=true) with
-    Previous / Next buttons, like a slider. ASI:One stacks carousels vertically and can't update a card in place,
-    so each arrow tap sends the next page as a new card. Picks live in the session: the buttons carry this page's
-    ticks (selection["vendors"]); ticking a caterer that is already "Selected" removes it.
 
-    vendors: this page only, [{"vendor_id", "name", "photo_url", "meta", "connected"}]; picked: names picked so far.
+def picker_grid(rfq_id: str, location: str, vendors: list[dict]) -> dict:
+    """Caterer picker as ONE card: every caterer as a small photo tile in ASI:One's 3-wide grid (choice_grid,
+    multi=true), then Get quotes / Quote all. ASI:One stacks carousels vertically and can't update a card in
+    place (every tap is a new message), so a single grid is the only picker that never re-renders.
+    The drawer keeps the ticks and merges them into the button's selection as selection["vendors"].
+
+    vendors: [{"vendor_id", "name", "photo_url", "meta", "connected"}]
     """
     def label(v: dict) -> str:
         meta = v["meta"].replace(" away", "")
-        text = " · ".join(x for x in (v["name"], meta, "✓ Connected" if v["connected"] else "") if x)
-        return f"✅ {text}" if v.get("picked") else text
+        return " · ".join(x for x in (v["name"], meta, "✓ Connected" if v["connected"] else "") if x)
 
-    def button(text: str, action: str, primary: bool = False, to_page: int = 0) -> dict:
-        sel = {"action": action, "rfq_id": rfq_id, "vendor_id": ""}
-        if action == "picker_page":
-            sel["page"] = str(to_page)
-        return {"type": "button", "label": text, "primary": primary, "action": {"selection": sel}}
+    def button(text: str, action: str, primary: bool = False) -> dict:
+        return {"type": "button", "label": text, "primary": primary,
+                "action": {"selection": {"action": action, "rfq_id": rfq_id, "vendor_id": ""}}}
 
-    n = len(picked)
-    chosen = (f"✅ Selected ({n}): {', '.join(picked)}. Tick a ✅ one to remove it" if n
-              else "Tick the caterers you want, then Get quotes. Next ▶ for more")
-    buttons = [
-        *([button("◀ Prev", "picker_page", to_page=page - 1)] if page > 0 else []),
-        button("Get quotes", "select_vendors", primary=True),
-        button("Quote all", "select_all"),
-        *([button("Next ▶", "picker_page", to_page=page + 1)] if page < pages - 1 else []),
-    ]
     return {
         "root": {
             "type": "section",
-            "title": f"Caterers near {location.split(',')[0]} · {page + 1}/{pages}",
-            "subtitle": f"{chosen}.",
+            "title": f"Caterers near {location.split(',')[0]}",
+            "subtitle": "Tick the caterers you want, then Get quotes. Nobody is contacted until then.",
             "children": [
                 {
                     "type": "choice_grid",
@@ -294,7 +283,10 @@ def picker_page(rfq_id: str, location: str, vendors: list[dict], page: int, page
                         for v in vendors
                     ],
                 },
-                {"type": "group", "direction": "row", "gap": 8, "children": buttons},
+                {"type": "group", "direction": "row", "gap": 8, "children": [
+                    button("Get quotes", "select_vendors", primary=True),
+                    button("Quote all", "select_all"),
+                ]},
             ],
         }
     }

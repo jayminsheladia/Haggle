@@ -25,7 +25,7 @@ from uagents_core.contrib.protocols.chat import (
 
 from shared import observability
 from shared.cards import (
-    DIETS, card_message, event_form, picker_page, quote_detail, quotes_carousel, review_card, text_message, usd,
+    DIETS, card_message, event_form, picker_grid, quote_detail, quotes_carousel, review_card, text_message, usd,
 )
 from shared.llm import chat_json
 from shared.models import (
@@ -364,19 +364,7 @@ async def _on_chat(ctx: Context, sender: str, msg: ChatMessage):
         await toggle_vendor(ctx, sender, s, sel, text)
         ctx.storage.set(sender, s)
         return
-    if action == "picker_page" and s.get("vendors"):
-        apply_page_ticks(s, sel, text)
-        m = re.search(r"\bpage\W+(\d+)", text, re.I)
-        page = sel.get("page", m.group(1) if m else None)
-        if page is None:  # planner prose without the payload: "Next" / "Previous"
-            page = s.get("picker_page", 0) + (-1 if re.search(r"\bprev", text, re.I) else 1)
-        await send_picker(ctx, sender, s, int(page))
-        ctx.storage.set(sender, s)
-        return
     if action in ("select_vendors", "select_all") and s.get("vendors"):
-        if action == "select_vendors":
-            apply_page_ticks(s, sel, text)
-            sel = {**sel, "vendors": list(s.get("picked", []))}
         await pick_vendors(ctx, sender, s, sel, text)
         ctx.storage.set(sender, s)
         return
@@ -495,56 +483,21 @@ def merge_vendors(entries: list[dict]) -> list[dict]:
     return list(merged.values())
 
 
-PICKER_PAGE_SIZE = 3  # one full row of the 3-wide grid, like a slider
-
-
-async def send_picker(ctx: Context, user: str, s: dict, page: int = 0) -> None:
-    """Send one page of the caterer picker (one row of PICKER_PAGE_SIZE caterers, Prev / Next)."""
+async def send_picker(ctx: Context, user: str, s: dict) -> None:
     vendors = s["vendors"]
-    pages = max(1, -(-len(vendors) // PICKER_PAGE_SIZE))
-    page = min(max(page, 0), pages - 1)
-    s["picker_page"] = page
-    picked = s.setdefault("picked", [])
-    names = {v["vendor_id"]: v["display_name"] for v in vendors}
     loc = s["location"]["resolved"]
-    if page == 0 and not picked:
-        connected = sum(bool(v.get("claimed")) for v in vendors)
-        note = (f"{connected} {'are' if connected != 1 else 'is'} connected to Haggle and can negotiate; for the "
-                "others I'll use their public menus." if connected else "I'll get estimates from their public menus.")
-        lead = f"I found {len(vendors)} caterers near {loc}. {note} Tick the ones you want, then Next ▶ or Get quotes."
-    else:
-        lead = f"Caterers {page * PICKER_PAGE_SIZE + 1}–{min((page + 1) * PICKER_PAGE_SIZE, len(vendors))} of {len(vendors)}."
-    shown = vendors[page * PICKER_PAGE_SIZE:(page + 1) * PICKER_PAGE_SIZE]
+    connected = sum(bool(v.get("claimed")) for v in vendors)
+    note = (f"{connected} {'are' if connected != 1 else 'is'} connected to Haggle and can negotiate; for the others "
+            "I'll use their public menus." if connected else "I'll get estimates from their public menus.")
     await ctx.send(user, card_message(
-        lead,
+        f"I found {len(vendors)} caterers near {loc}. {note} Tick the ones you want, then tap Get quotes.",
         "custom",
-        picker_page(
+        picker_grid(
             s["rfq_id"], loc,
             [{"vendor_id": v["vendor_id"], "name": v["display_name"], "photo_url": v["photo_url"],
-              "meta": v["meta"], "connected": v.get("claimed", False), "picked": v["vendor_id"] in picked}
-             for v in shown],
-            page, pages, [names[x] for x in picked if x in names],
+              "meta": v["meta"], "connected": v.get("claimed", False)} for v in vendors],
         ),
     ))
-
-
-def apply_page_ticks(s: dict, sel: dict, text: str) -> None:
-    """Toggle the caterers ticked on the page the user was looking at into s["picked"]."""
-    page = s.get("picker_page", 0)
-    shown = s["vendors"][page * PICKER_PAGE_SIZE:(page + 1) * PICKER_PAGE_SIZE]
-    ids = {v["vendor_id"] for v in shown}
-    ticks = sel.get("vendors") or []
-    if isinstance(ticks, str):  # a list, or "a,b" depending on how the drawer serializes it
-        try:
-            ticks = json.loads(ticks)
-        except ValueError:
-            ticks = [x.strip() for x in ticks.split(",")]
-    ticked = set(ticks if isinstance(ticks, list) else [ticks]) & ids
-    if not ticked and not sel.get("vendors"):  # planner prose: caterer names in the text
-        ticked = {v["vendor_id"] for v in shown if v["display_name"].lower() in text.lower()}
-    picked = s.setdefault("picked", [])
-    for vid in (v["vendor_id"] for v in shown if v["vendor_id"] in ticked):
-        picked.remove(vid) if vid in picked else picked.append(vid)
 
 
 async def toggle_vendor(ctx: Context, user: str, s: dict, sel: dict, text: str) -> None:
