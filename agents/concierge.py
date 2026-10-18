@@ -307,6 +307,7 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
         ChatAcknowledgement(timestamp=datetime.now(timezone.utc), acknowledged_msg_id=msg.msg_id),
     )
     text = "".join(c.text for c in msg.content if isinstance(c, TextContent)).strip()
+    text = re.sub(r"^(@[\w.-]+[\s,:]*)+", "", text).strip()  # ASI:One keeps the "@haggle" mention
     if not text:
         return
 
