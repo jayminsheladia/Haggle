@@ -1588,11 +1588,14 @@ async def on_counter_result(ctx: Context, sender: str, result: CounterResult):
         return
     observability.tag(result.trace, result.rfq_id, result.vendor_id)
     user, s = _session_for(ctx, result.rfq_id)
-    if (s and s.get("stage") == "choosing" and result.quote and result.vendor_id not in s.get("quotes", {})
+    if (s and s.get("stage") in ("choosing", "picking") and result.quote and result.vendor_id not in s.get("quotes", {})
             and result.vendor_id in s.get("shortlist", []) and result.ranked):
-        # A caterer answered after the Negotiator stopped waiting: add its quote instead of dropping it.
+        # A caterer answered after the Negotiator stopped waiting (even when no quote came in on time, which left
+        # the user on the picker): add its quote instead of dropping it.
         s.get("declined", {}).pop(result.vendor_id, None)
+        s.setdefault("list_prices", {})
         _store_ranked(s, result.ranked)
+        s["stage"] = "choosing"
         ctx.storage.set(user, s)
         ctx.logger.info(f"[{result.rfq_id}] late quote from {result.vendor_id} added")
         await send_carousel(ctx, user, s, f"{result.quote.vendor_name}'s quote just came in.")
