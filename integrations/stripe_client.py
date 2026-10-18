@@ -2,9 +2,10 @@
 
 Adapted from Fetch's stripe-horoscope-agent: a Checkout Session whose details go into the Payment Protocol's
 RequestPayment metadata["stripe"]; CommitPayment comes back with the session id as transaction_id.
-STRIPE_CHECKOUT_UI=hosted (default): a Stripe-hosted checkout page (checkout.stripe.com) the chat links to, since
-plain ASI:One chat often doesn't render the embedded one; the Concierge also polls the session, so a payment made
-on that page books even if no CommitPayment arrives. STRIPE_CHECKOUT_UI=embedded: Fetch's embedded checkout.
+STRIPE_CHECKOUT_UI=embedded (default): Fetch's embedded checkout; ASI:One shows "Pay with Stripe" and its Confirm
+Payment opens the Stripe card form from metadata["stripe"]["client_secret"]. STRIPE_CHECKOUT_UI=hosted: a
+Stripe-hosted page (checkout.stripe.com) the chat links to instead (ASI:One's Confirm Payment can't open it).
+Either way the Concierge also polls the session, so a paid checkout books even if no CommitPayment arrives.
 
 The amount is always computed in code by the caller; this module never decides a price. The secret
 key never leaves this module (only the publishable key goes into metadata).
@@ -55,7 +56,7 @@ def create_deposit_checkout(*, rfq_id: str, vendor_id: str, vendor_name: str, am
         raise ValueError(f"deposit ${amount_usd:.2f} is below Stripe's $0.50 minimum")
     back = os.getenv("STRIPE_SUCCESS_URL", "https://asi1.ai")
     return_url = back + f"?session_id={{CHECKOUT_SESSION_ID}}&rfq_id={rfq_id}"
-    hosted = os.getenv("STRIPE_CHECKOUT_UI", "hosted") != "embedded"
+    hosted = checkout_ui() == "hosted"
     ui = ({"success_url": return_url, "cancel_url": back} if hosted else
           # Stripe's current name for "embedded"; metadata below keeps ASI:One's "embedded"
           {"ui_mode": "embedded_page", "redirect_on_completion": "if_required", "return_url": return_url})
@@ -113,6 +114,15 @@ def charge_test_deposit(*, rfq_id: str, vendor_id: str, vendor_name: str, amount
         idempotency_key=f"haggle-deposit-{rfq_id}-{vendor_id}-{cents}-{attempt}",
     )
     return intent.id
+
+
+def checkout_ui() -> str:
+    return "hosted" if os.getenv("STRIPE_CHECKOUT_UI", "embedded") == "hosted" else "embedded"
+
+
+def expire_checkout(checkout_session_id: str) -> None:
+    """Close an unpaid Checkout Session so it can never be paid (e.g. replaced by one of the other kind)."""
+    _stripe().checkout.Session.expire(checkout_session_id)
 
 
 def session_status(checkout_session_id: str) -> str:

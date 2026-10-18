@@ -26,7 +26,9 @@ from uagents_core.contrib.protocols.chat import (
 )
 from uagents_core.contrib.protocols.payment import CancelPayment, CommitPayment, CompletePayment, RejectPayment
 
-from integrations.stripe_client import charge_test_deposit, create_deposit_checkout, mock_payments, session_status
+from integrations.stripe_client import (
+    charge_test_deposit, checkout_ui, create_deposit_checkout, expire_checkout, mock_payments, session_status,
+)
 from shared import observability
 from shared.cards import (
     DIETS, card_message, event_form, info_card, leftovers_form, picker_carousel, picker_slider, quote_detail, quotes_carousel,
@@ -1058,6 +1060,10 @@ async def request_deposit(ctx: Context, user: str, s: dict, q: dict, when: str) 
             await ctx.send(BOOKER_ADDRESS, booking_message(s, user))
             await ctx.send(user, text_message("Your deposit is already paid. Confirming with the caterer..."))
             return
+        if status == "open" and checkout.get("ui_mode", "embedded") != checkout_ui():
+            # Open but made for the other checkout kind (the setting changed): close it so it can't also be paid.
+            await asyncio.to_thread(expire_checkout, checkout["checkout_session_id"])
+            status = "expired"
         if status != "open":
             checkout = None  # expired unpaid: start a fresh one
     if not checkout:
@@ -1084,10 +1090,13 @@ async def request_deposit(ctx: Context, user: str, s: dict, q: dict, when: str) 
             "Stripe test mode, so no real money: card **4242 4242 4242 4242**, any future date (e.g. **12/34**), "
             "any CVC (e.g. **123**), any ZIP (e.g. **90024**).\n\n"
             "I'll confirm with the caterer as soon as Stripe shows the payment, then come back to this chat."))
-    else:
+    else:  # embedded: ASI:One's "Confirm Payment" opens the Stripe card form
         await ctx.send(user, text_message(
-            f"Pay the {usd(b['deposit_usd'])} deposit above to book {q['vendor_name']} for {when}. "
-            "I'll confirm with the caterer as soon as it goes through."))
+            f"**Tap Confirm Payment above to pay the {usd(b['deposit_usd'])} deposit** and book {q['vendor_name']} "
+            f"for {when}. Stripe's card form opens right here.\n\n"
+            "Stripe test mode, so no real money: card **4242 4242 4242 4242**, any future date (e.g. **12/34**), "
+            "any CVC (e.g. **123**), any ZIP (e.g. **90024**).\n\n"
+            "I'll confirm with the caterer as soon as Stripe shows the payment."))
     ctx.logger.info(f"[{s['rfq_id']}] RequestPayment {usd(b['deposit_usd'])} ({checkout['checkout_session_id']})")
 
 
