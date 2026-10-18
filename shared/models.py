@@ -243,3 +243,36 @@ class DiscoveryResult(Model):
     lng: Optional[float] = None
     error: str = ""
     trace: str = ""
+
+
+# ---- Booking (Person D) -----------------------------------------------------
+
+
+class BookingConfirmed(Model):
+    """Concierge -> Booker once the deposit's CommitPayment arrives. The Booker re-verifies with Stripe
+    before confirming anything. Idempotent on rfq_id: a replay gets the stored BookingResult."""
+    rfq_id: str
+    vendor_id: str
+    vendor_name: str
+    vendor_address: str = ""  # vendor agent address (Accept is sent here once paid)
+    version: int = 1
+    user_address: str = ""
+    event_date: str = ""  # YYYY-MM-DD
+    event_time: str = ""  # HH:MM
+    location: str = ""
+    headcount: int = 0
+    dietary_summary: str = ""
+    total_usd: float
+    deposit_usd: float
+    checkout_session_id: str  # Stripe Checkout Session id = CommitPayment.transaction_id
+    trace: str = ""
+
+
+class BookingResult(Model):
+    """Booker -> Concierge. status: confirmed | payment_failed | error."""
+    rfq_id: str
+    vendor_id: str
+    status: str
+    detail: str = ""
+    email_sent: bool = False
+    trace: str = ""
