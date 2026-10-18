@@ -53,6 +53,7 @@ OWNER_FIXABLE = ("needs ", "maximum headcount")  # rule violations the owner may
 
 UNCLAIMED_NOTE = "Estimate from public menu — not confirmed by the business"
 NO_PRICES = "no public menu prices yet — Haggle can request a quote from the business by email"
+PRICE_ON_REQUEST = "No public prices — request a quote from the business"
 MENU_PREVIEW_ITEMS = 8
 UNCLAIMED_COUNTER = "unclaimed vendor — Haggle will request a quote from the business by email"
 UNCLAIMED_ACCEPT = "unclaimed vendors can't be booked — Haggle will request a quote from the business by email"
@@ -288,7 +289,11 @@ def make_vendor_agent(menu: VendorMenu | dict, seed: str, on_menu_change: Option
             price, lines, ok, conflicts = price_for(menu, rfq, unlabeled_ok=not menu.claimed)
             hard_conflicts = [c for c in conflicts if UNLABELED not in c]
             st = {"rfq": rfq.json(), "negotiator": sender}
-            if not menu.priced_items:
+            if menu.extraction_status != "extracted" and menu.items:
+                # A real menu without (enough) public prices: show it, price on request. Never priced by us.
+                reply = build_quote(rfq, 0.0, [], False, ["no public prices"], status="price_on_request",
+                                    note=PRICE_ON_REQUEST)
+            elif not menu.priced_items or menu.extraction_status != "extracted":
                 reply = decline(rfq.rfq_id, rfq.version, NO_PRICES, rfq.trace)
             elif not menu.claimed:
                 if violations or hard_conflicts:

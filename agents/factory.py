@@ -78,10 +78,10 @@ async def onboard(ctx: Context, req: OnboardRequest, progress: Progress | None =
         with observability.span("factory.extract", f"extract {req.business_name or url}", req.trace):
             if url:
                 menu, reason = await extract_menu_with_reason(url, req.business_name or None, req.place_id,
-                                                              req.phone, req.email)
+                                                              req.phone, req.email, address=req.address)
             else:
                 menu, reason = VendorMenu(name=req.business_name, slug=slug, place_id=req.place_id,
-                                          phone=req.phone, email=req.email), "no website to read"
+                                          phone=req.phone, email=req.email, address=req.address), "no website to read"
         timings["extract"] = time.monotonic() - t
         if not menu.photo_url and menu.place_id:
             async with httpx.AsyncClient(timeout=10) as client:

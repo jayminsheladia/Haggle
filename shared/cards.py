@@ -193,7 +193,7 @@ def quotes_carousel(rfq_id: str, title: str, quotes: list[dict]) -> dict:
                 "title": q["name"],
                 "subtitle": q["subtitle"],
                 "badges": [{"label": label, "variant": variant} for label, variant in q["badges"]],
-                "secondary_text": f"{usd(q['total_usd'])} · {usd(q['per_head_usd'])}/person",
+                "secondary_text": q.get("price_text") or f"{usd(q['total_usd'])} · {usd(q['per_head_usd'])}/person",
                 "primary_cta": {
                     "label": "View",
                     "selection": {"action": "pick_quote", "rfq_id": rfq_id, "vendor_id": q["vendor_id"]},

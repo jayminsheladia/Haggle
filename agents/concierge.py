@@ -614,7 +614,7 @@ async def pick_vendors(ctx: Context, user: str, s: dict, sel: dict, text: str) -
         ctx.storage.set(f"onboard:{v['vendor_id']}", sorted(set(waiting) | {user}))
         await ctx.send(FACTORY_ADDRESS, OnboardRequest(
             business_name=v["display_name"], website=v.get("website", ""), place_id=v.get("place_id", ""),
-            phone=v.get("phone", ""), trace=s["trace"]))
+            phone=v.get("phone", ""), address=v.get("address", ""), trace=s["trace"]))
     users = ctx.storage.get("onboarding_users") or []
     ctx.storage.set("onboarding_users", sorted(set(users) | {user}))
     ctx.logger.info(f"[{s['rfq_id']}] onboarding {list(s['onboarding'])}")
@@ -741,18 +741,23 @@ def _store_ranked(s: dict, ranked) -> None:
         s["list_prices"].setdefault(vid, r.quote.total_usd)
         s["ranked"].append(vid)
         s["fits"][vid] = r.fits_budget
+    s["ranked"].sort(key=lambda vid: s["quotes"][vid]["status"] == "price_on_request")  # priced quotes first
 
 
 def can_negotiate(q: dict) -> bool:
     return not q["estimate"] and q["round"] < 2 and q["status"] not in ("accepted", "needs_approval")
 
 
+def on_request(q: dict) -> bool:
+    return q["status"] == "price_on_request"
+
+
 def quote_view(s: dict, vid: str) -> dict:
     q, v = s["quotes"][vid], _vendor(s, vid)
-    totals = [s["quotes"][x]["total_usd"] for x in s["ranked"]]
+    totals = [s["quotes"][x]["total_usd"] for x in s["ranked"] if not on_request(s["quotes"][x])]
     ratings = [_vendor(s, x).get("rating") for x in s["ranked"]]
     badges = []
-    if len(totals) > 1 and q["total_usd"] == min(totals):
+    if len(totals) > 1 and not on_request(q) and q["total_usd"] == min(totals):
         badges.append(("Cheapest", "success"))
     if v.get("rating") and v["rating"] == max(r for r in ratings if r):
         badges.append(("Top rated", "info"))
@@ -761,9 +766,12 @@ def quote_view(s: dict, vid: str) -> dict:
         badges.append((f"Negotiated −{usd(saved)}", "success"))
     if s["checklist"]["dietary"]["value"] or s["checklist"]["allergies"]["value"]:
         badges.append(("Fits all diets", "info") if q.get("dietary_ok", True) else ("Diets to confirm", "warning"))
-    if not s["fits"].get(vid, True):
+    if on_request(q):
+        badges = [b for b in badges if b[0] not in ("Fits all diets", "Diets to confirm")]
+        badges.append(("Price on request", "info"))
+    elif not s["fits"].get(vid, True):
         badges.append(("Over budget", "warning"))
-    if q["estimate"]:
+    if q["estimate"] and not on_request(q):
         badges.append(("Estimate · not confirmed", "warning"))
     badges.insert(0, ("Connected", "success") if q["claimed"] else ("Not connected", "info"))
     if q["status"] == "needs_approval":
@@ -779,6 +787,7 @@ def quote_view(s: dict, vid: str) -> dict:
         "photo_url": v.get("photo_url") or q.get("photo_url", ""),
         "total_usd": q["total_usd"],
         "per_head_usd": q["per_head_usd"],
+        "price_text": "Price on request" if on_request(q) else "",
         "subtitle": " · ".join(sub),
         "badges": badges,
     }
@@ -796,7 +805,10 @@ async def send_carousel(ctx: Context, user: str, s: dict, narration: str) -> Non
 
 def detail_rows(s: dict, vid: str) -> list[tuple[str, str]]:
     q, v = s["quotes"][vid], _vendor(s, vid)
-    rows = [("Total", usd(q["total_usd"])), ("Per person", usd(q["per_head_usd"]))]
+    if on_request(q):
+        rows = [("Price", "not published: request a quote")]
+    else:
+        rows = [("Total", usd(q["total_usd"])), ("Per person", usd(q["per_head_usd"]))]
     if q["delivery_fee_usd"]:
         rows.append(("Delivery fee", usd(q["delivery_fee_usd"])))
     for item in q["items"]:
@@ -814,7 +826,7 @@ def detail_rows(s: dict, vid: str) -> list[tuple[str, str]]:
         rows.append((f"Menu · {name}", price or "on the menu"))
     if q.get("menu_url"):
         rows.append(("Full menu", q["menu_url"]))
-    rows.append(("Status", "Estimate · not confirmed" if q["estimate"]
+    rows.append(("Status", "Price on request" if on_request(q) else "Estimate · not confirmed" if q["estimate"]
                  else "Waiting on owner approval" if q["status"] == "needs_approval" else "Confirmed quote"))
     if q["note"]:
         rows.append(("Note", q["note"]))
@@ -834,7 +846,8 @@ async def quote_action(ctx: Context, user: str, s: dict, action: str, sel: dict,
     if action == "pick_quote":
         view = quote_view(s, vid) | {"rows": detail_rows(s, vid)}
         await ctx.send(user, card_message(
-            f"{q['vendor_name']}: {usd(q['total_usd'])} for {s['checklist']['headcount']['value']} guests.",
+            f"{q['vendor_name']}: " + ("no public prices yet, but here's their menu." if on_request(q) else
+                                      f"{usd(q['total_usd'])} for {s['checklist']['headcount']['value']} guests."),
             "detail",
             quote_detail(s["rfq_id"], view, can_negotiate(q), next_step(q)),
         ))
@@ -889,7 +902,7 @@ async def booking_action(ctx: Context, user: str, s: dict, action: str, vid: str
         else:
             target = cl["budget_usd"]["value"]
             s["booking"] = {"vendor_id": vid, "kind": "request_quote", "total_usd": q["total_usd"]}
-            rows += [("Their estimate", f"{usd(q['total_usd'])} (not confirmed)"),
+            rows += [("Their estimate", "not published" if on_request(q) else f"{usd(q['total_usd'])} (not confirmed)"),
                      ("Your target", usd(target) if target else "no fixed budget"),
                      ("Sent to", "the business by email, with a link to claim its Haggle agent")]
             card = review_card(s["rfq_id"], vid, "Request a confirmed quote", rows, "Send request")

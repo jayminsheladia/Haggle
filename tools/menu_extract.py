@@ -1,11 +1,12 @@
 """Menu extraction: a caterer's public menu -> VendorMenu.
 
 Reads the page we're given and, if it has no usable prices, the site's own menu/catering pages
-(links, PDFs, and common paths like /catering). Each page is read as text first; if that has no prices,
+(links, PDFs, and common paths like /catering), then menu platforms found by a web search
+(tools/menu_search.py; only pages that show this business's phone or address). Each page is read as text first; if that has no prices,
 its menu images or PDF pages are read with the vision model (OCR). The page with the most priced items
 wins. The LLM only copies items and prices exactly as written; per-person prices are computed here in
-code (tray price / serves). With fewer than MIN_PRICED_ITEMS priced items the menu is "estimated" with
-no items: we never invent items or prices.
+code (tray price / serves). With fewer than MIN_PRICED_ITEMS priced items the menu is "estimated": it keeps
+the real item names it found (shown as "price on request"), but is never priced. We never invent items or prices.
 
 Owner: Person B
 """
@@ -27,6 +28,7 @@ from pydantic import BaseModel, ValidationError
 
 from shared.llm import chat_json
 from shared.menu_schema import DietaryTag, MenuItem, VendorMenu, slugify
+from tools.menu_search import find_menu_pages, same_business
 
 FETCH_TIMEOUT_S = 15
 LLM_TIMEOUT_S = 45
@@ -270,7 +272,7 @@ async def _llm_items(name: str, content: str | list) -> Optional[list[MenuItem]]
     user = content
     for attempt in range(2):
         try:
-            data = await chat_json(system, user, max_tokens=4000, timeout_s=LLM_TIMEOUT_S,
+            data = await chat_json(system, user, max_tokens=8000, timeout_s=LLM_TIMEOUT_S,
                                    reasoning_effort="minimal")
             return _to_items(_ExtractedMenu.model_validate(data or {}))
         except ValidationError as e:
@@ -329,17 +331,34 @@ async def extract_menu_with_reason(
             pages += await asyncio.gather(*(_fetch(client, u) for u in menu_links(url, first)))
 
         best: list[MenuItem] = []
-        for page in pages:
-            if page.error:
-                continue
-            items, how = await _read_page(client, name, page)
-            if _priced(items) > _priced(best):
-                best, menu.source_url = items, page.url
-            if _priced(best) >= MIN_PRICED_ITEMS:
-                break  # good enough: don't spend more LLM calls
+        names: list[MenuItem] = []  # the longest menu without prices, still worth showing
+        names_url = ""
+
+        async def read(candidates: list[Page], check_business: bool = False) -> None:
+            nonlocal best, names, names_url
+            for page in candidates:
+                if page.error or _priced(best) >= MIN_PRICED_ITEMS:
+                    continue
+                if check_business and not same_business(page.text, menu.address, menu.phone):
+                    logger.info(f"[{menu.slug}] {page.url}: skipped, doesn't show this business's phone or address")
+                    continue
+                items, _ = await _read_page(client, name, page)
+                if _priced(items) > _priced(best):
+                    best, menu.source_url = items, page.url
+                elif not _priced(best) and len(items) > len(names):
+                    names, names_url = items, page.url
+
+        await read(pages)
+        if _priced(best) < MIN_PRICED_ITEMS and (menu.phone or menu.address):
+            # The business's own site has no prices: look for its menu on menu platforms.
+            found = await find_menu_pages(name, menu.address, menu.phone, url)
+            more = await asyncio.gather(*(_fetch(client, u) for u in found))
+            pages += more
+            await read(list(more), check_business=True)
 
     if _priced(best) < MIN_PRICED_ITEMS:
-        menu.source_url = url
+        menu.items = best or names
+        menu.source_url = (menu.source_url if best else names_url) or url
         readable = [p for p in pages if not p.error]
         if best:
             detail = f"only {_priced(best)} items with a per-person price"

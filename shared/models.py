@@ -46,7 +46,7 @@ class Quote(Model):
     claimed: bool = False
     estimate: bool = False  # True for unclaimed vendors: "Estimate · not confirmed"
     round: int = 0
-    status: str = "quoted"  # quoted | accepted | countered | needs_approval
+    status: str = "quoted"  # quoted | accepted | countered | needs_approval | price_on_request
     note: str = ""
     version: int = 1
     dietary_ok: bool = True  # every dietary group and allergy can be served
@@ -183,6 +183,7 @@ class OnboardRequest(Model):
     place_id: str = ""
     phone: str = ""
     email: str = ""
+    address: str = ""
     trace: str = ""
 
 

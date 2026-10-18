@@ -1,14 +1,302 @@
 {
   "name": "Beverly Catering",
   "slug": "beverly-catering",
-  "source_url": "http://www.beverlycatering.com/",
+  "source_url": "https://www.beverlycatering.com/copy-of-menus-1",
   "place_id": "ChIJk9ixvIy7woARC_yYIZ-dvV8",
   "phone": "(310) 877-4208",
   "email": "",
   "address": "",
   "lat": null,
   "lng": null,
-  "items": [],
+  "items": [
+    {
+      "name": "Lamb Chops",
+      "price_per_person": null,
+      "description": "Grilled with Cracked Pepper and Rosemary",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Southwestern Eggrolls",
+      "price_per_person": null,
+      "description": "Corn, Black Beans, Onions and Diced Tomatoes Deep Fried in a Crisp Dough",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Bruschetta",
+      "price_per_person": null,
+      "description": "Lightly Toasted Cocktail Bread Topped with Freshly Sliced Tomato, Red Onion, Garlic, Basil and Olive Oil",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Burekas",
+      "price_per_person": null,
+      "description": "Filo Dough Filled with Mushrooms and Spinach",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Frank Blankets",
+      "price_per_person": null,
+      "description": "Bite-Sized Hot Dogs Wrapped in Filo Dough",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Devilled Eggs",
+      "price_per_person": null,
+      "description": "Hard Boiled Egg Filled with a Blend of Hard Egg Yolk and Spices",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Beef Wrapped Asparagus",
+      "price_per_person": null,
+      "description": "Grilled Asparagus Wrapped with Tender Filet of Beef",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Tuna Tartar",
+      "price_per_person": null,
+      "description": "Marinated Tuna and Chopped Tomatoes Served in Mini Waffle Cones",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Seabass Tempura Skewers",
+      "price_per_person": null,
+      "description": "Strips of Fried Sea Bass on Skewers",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Salmon Ceviche",
+      "price_per_person": null,
+      "description": "Salmon Salsa Marinated in Lemon Juice Served in Cucumber Cups",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Yellowfin Sashimi",
+      "price_per_person": null,
+      "description": "Green chili, pistachios, and mint",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Gazpacho Shots",
+      "price_per_person": null,
+      "description": "Market fresh vegetables",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Deconstructed Matzoh Ball Soup",
+      "price_per_person": null,
+      "description": "Matzoh cracker, root vegetables, roasted chicken",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Foie Gras Bulee",
+      "price_per_person": null,
+      "description": "Sour cherries, candied pistachios",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Twice-Baked Fingerling Potatos",
+      "price_per_person": null,
+      "description": "Perfect bite-sized potatoes with your choice of accoutrements",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Salmon Rolls",
+      "price_per_person": null,
+      "description": "Spiced Fresh Salmon Rolled in Spinach and Fried in a Crisp Wrapper",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Spicy Tuna with Crispy Rice",
+      "price_per_person": null,
+      "description": "Raw Tuna Seasoned with Spices Over Crispy Fried Rice",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Avocado Eggrolls",
+      "price_per_person": null,
+      "description": "Fresh Avocado, Sun-Dried Tomato, Red Onion and Cilantro Deep Fried in a Crisp Dough",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Seared Albacore Tuna Belly",
+      "price_per_person": null,
+      "description": "potato and onion ratatouille",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Chicken Brochette",
+      "price_per_person": null,
+      "description": "Morsels of Chicken Breast Skewered with Peppers and Onions",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Beef Brochette",
+      "price_per_person": null,
+      "description": "Morsels of Tender Beef Skewered with Peppers and Onions",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Teriyaki Chicken Brochette",
+      "price_per_person": null,
+      "description": "Breast of Chicken Marinated in Teriyaki Sauce Skewered with Grilled Pineapples",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Smoked Salmon",
+      "price_per_person": null,
+      "description": "Melon and nectarines",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Carrot Fritter",
+      "price_per_person": null,
+      "description": "Apricot sauce",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Tuna Tartar",
+      "price_per_person": null,
+      "description": "Grapes",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Charred Chili-Rubbed Steak Tips",
+      "price_per_person": null,
+      "description": "Rosemary skewers, onions",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Foie Gras",
+      "price_per_person": null,
+      "description": "Ginger, mango",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Salmon Sashimi",
+      "price_per_person": null,
+      "description": "Corrieander, figs",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Chickpea Fries",
+      "price_per_person": null,
+      "description": "Mashed chickpea \"fries,\" seasonal dipping sauce",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Avocado Fries",
+      "price_per_person": null,
+      "description": "Sliced and deep-fried avocado, seasonal dipping sauce",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Sauteed Vegetable Melange",
+      "price_per_person": null,
+      "description": "Lemon and garlic",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Hamachi Ceviche",
+      "price_per_person": null,
+      "description": "Watermelon and tomato cubes, ahi tuna/hamachi, cilantro, cucumber, lemon-pineapple vinaigrette",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Pan-Cooked Fennel Root",
+      "price_per_person": null,
+      "description": "Radicchio, touch of Orange and Basil",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Grilled Eggplant",
+      "price_per_person": null,
+      "description": "Fresh Basil and Tomato Vinaigrette",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Ratatouille Provencal",
+      "price_per_person": null,
+      "description": "Sauteed Eggplant, Onions, Garlic, Zucchini, Red Peppers and Tomato",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Grilled and Sliced Portobello",
+      "price_per_person": null,
+      "description": "Fresh Oregano",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Portabello Steak Fries",
+      "price_per_person": null,
+      "description": "Seasonal dipping sauce",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Salmon Egg Canapés",
+      "price_per_person": null,
+      "description": "Salmon Egg Served on Mini Toasted Baguettes",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Pastrami Canapés",
+      "price_per_person": null,
+      "description": "Lightly Toasted Cocktail Bread Topped with Sliced Pastrami",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Turkey Canapés",
+      "price_per_person": null,
+      "description": "Sliced Turkey Served on Lightly Toasted Cocktail Bread",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Lox Canapés",
+      "price_per_person": null,
+      "description": "Smoked Salmon with Dill and Capers Served on Mini Toasted Baguettes",
+      "dietary_tags": [],
+      "serves": null
+    }
+  ],
   "claimed": false,
   "owner_contact": null,
   "rules": {
@@ -22,7 +310,7 @@
     "delivery_fee_usd": 0.0
   },
   "extraction_status": "estimated",
-  "extracted_at": "2026-10-18T02:24:05.046984+00:00",
+  "extracted_at": "2026-10-18T04:17:10.361433+00:00",
   "rating": null,
   "photo_url": "https://lh3.googleusercontent.com/grass-cs/AABkmLc6lJKtZdbWlEzu22SoNS1c_jWY4-7jaFBm3K7zGPTKI9-Ys2xLOpL-ccsV5xYxS4R0q2CvsY98ttbX-GXvE3K6fSm_QZxQsvOLI5pCQ6J7AQH8vNoUFu0z8kUil9xg368bi74=s4800-w800"
 }

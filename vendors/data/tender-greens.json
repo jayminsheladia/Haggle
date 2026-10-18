@@ -8,7 +8,447 @@
   "address": "1109 Glendon Ave, Los Angeles, CA 90024",
   "lat": null,
   "lng": null,
-  "items": [],
+  "items": [
+    {
+      "name": "Mediterranean Steak Salad",
+      "price_per_person": null,
+      "description": "feta, cherry tomatoes, pickled cucumbers, sweet peppers, green olives, herbs, red gem lettuces, arugula, lemon vinaigrette",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Tuna Nicoise Salad",
+      "price_per_person": null,
+      "description": "cherry tomatoes, roasted fingerling potatoes, capers, french green beans, egg, olives, baby greens, sherry vinaigrette",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Happier Vegan Salad",
+      "price_per_person": null,
+      "description": "falafel, harissa sauce, farro wheat, seasonal hummus, heirloom cherry tomatoes, pickled cucumbers, onions, roasted peppers, baby lettuces, sherry vinaigrette",
+      "dietary_tags": [
+        "vegan"
+      ],
+      "serves": null
+    },
+    {
+      "name": "Grilled Chicken Cobb Salad",
+      "price_per_person": null,
+      "description": "blue cheese, bacon, egg, avocado, cherry tomatoes, romaine, tarragon dressing",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Chipotle BBQ Chicken Salad",
+      "price_per_person": null,
+      "description": "avocado, queso fresco, radish, green onions, crispy tortilla, cilantro, romaine, lime dressing",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Bolognese Pasta",
+      "price_per_person": null,
+      "description": "slow cooked pork bolognese, fusilli pasta, grated pecorino cheese",
+      "dietary_tags": [],
+      "serves": 10
+    },
+    {
+      "name": "Mac & Cheese Pasta",
+      "price_per_person": null,
+      "description": "fusilli, parmesan, cheddar, and mozzarella cheese",
+      "dietary_tags": [
+        "vegetarian"
+      ],
+      "serves": 10
+    },
+    {
+      "name": "Chicken Pesto Pasta",
+      "price_per_person": null,
+      "description": "sunflower seed pesto, casarecce pasta, green beans, roasted potatoes, Divina tomatoes, basil and parmesan cheese",
+      "dietary_tags": [],
+      "serves": 10
+    },
+    {
+      "name": "Mini Cookies",
+      "price_per_person": null,
+      "description": "chocolate chunk, 1 dozen",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Olive Oil Cake",
+      "price_per_person": null,
+      "description": "individual",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Carrot Cupcake",
+      "price_per_person": null,
+      "description": "individual",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Mostess Cupcake",
+      "price_per_person": null,
+      "description": "individual",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Seasonal Fresca Agua",
+      "price_per_person": null,
+      "description": null,
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Iced Green or Black Tea",
+      "price_per_person": null,
+      "description": null,
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Mint Lemonade",
+      "price_per_person": null,
+      "description": null,
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Hibiscus Tea",
+      "price_per_person": null,
+      "description": null,
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Bottled Water (still or sparkling)",
+      "price_per_person": null,
+      "description": null,
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Chicken Pesto Sandwich Tray A",
+      "price_per_person": null,
+      "description": "12 halves; chicken breast, provolone, preserved tomatoes, arugula, sunflower seed pesto, aioli, grilled Larder Baking Co. sourdough",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Chicken Pesto Sandwich Tray B",
+      "price_per_person": null,
+      "description": "12 halves + 1 side; chicken breast, provolone, preserved tomatoes, arugula, sunflower seed pesto, aioli, grilled Larder Baking Co. sourdough",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Chicken Pesto Sandwich Tray C",
+      "price_per_person": null,
+      "description": "12 halves + 2 sides; chicken breast, provolone, preserved tomatoes, arugula, sunflower seed pesto, aioli, grilled Larder Baking Co. sourdough",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Tomato Mozzarella Sandwich Tray A",
+      "price_per_person": null,
+      "description": "12 halves; mozzarella, preserved tomatoes, arugula, sunflower seed pesto, aioli, grilled Larder Baking Co. sourdough",
+      "dietary_tags": [
+        "vegetarian"
+      ],
+      "serves": null
+    },
+    {
+      "name": "Tomato Mozzarella Sandwich Tray B",
+      "price_per_person": null,
+      "description": "12 halves + 1 side; mozzarella, preserved tomatoes, arugula, sunflower seed pesto, aioli, grilled Larder Baking Co. sourdough",
+      "dietary_tags": [
+        "vegetarian"
+      ],
+      "serves": null
+    },
+    {
+      "name": "Tomato Mozzarella Sandwich Tray C",
+      "price_per_person": null,
+      "description": "12 halves + 2 sides; mozzarella, preserved tomatoes, arugula, sunflower seed pesto, aioli, grilled Larder Baking Co. sourdough",
+      "dietary_tags": [
+        "vegetarian"
+      ],
+      "serves": null
+    },
+    {
+      "name": "Chipotle BBQ Chicken Sandwich Tray A",
+      "price_per_person": null,
+      "description": "12 halves; chipotle bbq chicken breast, spicy aioli, queso fresco, avocado, grilled Larder Baking Co. sourdough",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Chipotle BBQ Chicken Sandwich Tray B",
+      "price_per_person": null,
+      "description": "12 halves + 1 side; chipotle bbq chicken breast, spicy aioli, queso fresco, avocado, grilled Larder Baking Co. sourdough",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Chipotle BBQ Chicken Sandwich Tray C",
+      "price_per_person": null,
+      "description": "12 halves + 2 sides; chipotle bbq chicken breast, spicy aioli, queso fresco, avocado, grilled Larder Baking Co. sourdough",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Chicken Pesto Sandwich Box",
+      "price_per_person": null,
+      "description": "full or half sandwich & chips (sea salt, bbq or salt & vinegar) with a mini chocolate chunk cookie (upgrade to a premium side for an additional charge); 12 box minimum",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Chipotle BBQ Chicken Sandwich Box",
+      "price_per_person": null,
+      "description": "full or half sandwich & chips (sea salt, bbq or salt & vinegar) with a mini chocolate chunk cookie (upgrade to a premium side for an additional charge); 12 box minimum",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Tomato Mozzarella Sandwich Box",
+      "price_per_person": null,
+      "description": "full or half sandwich & chips (sea salt, bbq or salt & vinegar) with a mini chocolate chunk cookie (upgrade to a premium side for an additional charge); 12 box minimum",
+      "dietary_tags": [
+        "vegetarian"
+      ],
+      "serves": null
+    },
+    {
+      "name": "Mediterranean Steak Salad Box",
+      "price_per_person": null,
+      "description": "with 1/2 grilled Larder Baking Co. sourdough",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Chipotle BBQ Chicken Salad Box",
+      "price_per_person": null,
+      "description": "with 1/2 grilled Larder Baking Co. sourdough",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Grilled Cobb Chicken Salad Box",
+      "price_per_person": null,
+      "description": "with 1/2 grilled Larder Baking Co. sourdough",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Grilled Salmon Salad Box",
+      "price_per_person": null,
+      "description": "with 1/2 grilled Larder Baking Co. sourdough",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Tuna Nicoise Salad Box",
+      "price_per_person": null,
+      "description": "with 1/2 grilled Larder Baking Co. sourdough",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Plates Option A (2 signature proteins + 2 sides)",
+      "price_per_person": null,
+      "description": "Family style; small serves 10-12, large serves 15-20",
+      "dietary_tags": [],
+      "serves": 10
+    },
+    {
+      "name": "Plates Option A (2 signature proteins + 2 sides) - Large",
+      "price_per_person": null,
+      "description": "Family style; small serves 10-12, large serves 15-20",
+      "dietary_tags": [],
+      "serves": 15
+    },
+    {
+      "name": "Plates Option B (1 signature protein + 1 premium protein + 2 sides)",
+      "price_per_person": null,
+      "description": "Family style; small serves 10-12, large serves 15-20",
+      "dietary_tags": [],
+      "serves": 10
+    },
+    {
+      "name": "Plates Option B (1 signature protein + 1 premium protein + 2 sides) - Large",
+      "price_per_person": null,
+      "description": "Family style; small serves 10-12, large serves 15-20",
+      "dietary_tags": [],
+      "serves": 15
+    },
+    {
+      "name": "Plates Option C (2 premium proteins + 2 sides)",
+      "price_per_person": null,
+      "description": "Family style; small serves 10-12, large serves 15-20",
+      "dietary_tags": [],
+      "serves": 10
+    },
+    {
+      "name": "Plates Option C (2 premium proteins + 2 sides) - Large",
+      "price_per_person": null,
+      "description": "Family style; small serves 10-12, large serves 15-20",
+      "dietary_tags": [],
+      "serves": 15
+    },
+    {
+      "name": "Salt & Pepper Chicken",
+      "price_per_person": null,
+      "description": "Signature protein, also available a la carte",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Chipotle BBQ Chicken",
+      "price_per_person": null,
+      "description": "Signature protein, also available a la carte",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Country-Style Fried Chicken",
+      "price_per_person": null,
+      "description": "Signature protein, also available a la carte",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Falafel",
+      "price_per_person": null,
+      "description": "Signature protein, also available a la carte",
+      "dietary_tags": [
+        "vegan"
+      ],
+      "serves": 5
+    },
+    {
+      "name": "Grilled Steak",
+      "price_per_person": null,
+      "description": "Premium protein, also available a la carte",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Grilled Salmon",
+      "price_per_person": null,
+      "description": "Premium protein, also available a la carte",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Seared Tuna",
+      "price_per_person": null,
+      "description": "Premium protein, also available a la carte",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Grilled Shrimp",
+      "price_per_person": null,
+      "description": "Premium protein, also available a la carte",
+      "dietary_tags": [],
+      "serves": 5
+    },
+    {
+      "name": "Mashed Potatoes",
+      "price_per_person": null,
+      "description": null,
+      "dietary_tags": [],
+      "serves": 10
+    },
+    {
+      "name": "Baby Greens",
+      "price_per_person": null,
+      "description": "sherry vinaigrette",
+      "dietary_tags": [],
+      "serves": 10
+    },
+    {
+      "name": "Brown or Sushi Rice",
+      "price_per_person": null,
+      "description": "parmesan, sourdough",
+      "dietary_tags": [
+        "vegetarian"
+      ],
+      "serves": 10
+    },
+    {
+      "name": "Romaine Hearts",
+      "price_per_person": null,
+      "description": "croutons, caesar dressing",
+      "dietary_tags": [],
+      "serves": 10
+    },
+    {
+      "name": "Seasonal Vegetables",
+      "price_per_person": null,
+      "description": null,
+      "dietary_tags": [],
+      "serves": 10
+    },
+    {
+      "name": "Baby Spinach",
+      "price_per_person": null,
+      "description": "Laura Chenel goat cheese, toasted dried cranberries, toasted almonds, cabernet vinaigrette",
+      "dietary_tags": [
+        "contains-dairy",
+        "contains-nuts",
+        "vegetarian"
+      ],
+      "serves": 10
+    },
+    {
+      "name": "Farro Salad",
+      "price_per_person": null,
+      "description": "almonds, arugula, golden balsamic vinegar",
+      "dietary_tags": [
+        "contains-nuts",
+        "vegetarian"
+      ],
+      "serves": 10
+    },
+    {
+      "name": "Baby Arugula",
+      "price_per_person": null,
+      "description": "parmesan, shaved fennel, lemon vinaigrette",
+      "dietary_tags": [
+        "contains-dairy",
+        "vegetarian"
+      ],
+      "serves": 10
+    },
+    {
+      "name": "Salad Dressing 16oz",
+      "price_per_person": null,
+      "description": null,
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Kettle Chips",
+      "price_per_person": null,
+      "description": "sea salt, bbq or salt & vinegar",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Gravy 16oz",
+      "price_per_person": null,
+      "description": null,
+      "dietary_tags": [],
+      "serves": null
+    }
+  ],
   "claimed": false,
   "owner_contact": null,
   "rules": {
@@ -22,7 +462,7 @@
     "delivery_fee_usd": 0.0
   },
   "extraction_status": "estimated",
-  "extracted_at": "2026-10-18T02:10:06.500211+00:00",
+  "extracted_at": "2026-10-18T04:17:11.982243+00:00",
   "rating": null,
   "photo_url": ""
 }

@@ -118,6 +118,14 @@ None in use. Evaluated as backups for finding menus, and rejected (CLAUDE.md req
 Instead the Factory follows each site's own menu/catering links and PDFs (and /catering, /menu), reads PDF pages and
 menu images with the ASI:One vision model (OCR), and keeps the page with the most prices; photos come from the site's
 preview image or Google Places.
+If the business's own site has no prices, the Factory searches the web for its menu on menu platforms (SinglePlatform,
+Toast, ezCater, AllMenus, ...; `tools/menu_search.py`) and only uses a page that shows the business's own phone number or
+street address. Search uses `SERPER_API_KEY` (Google results) or `TAVILY_API_KEY` if set, else DuckDuckGo, which
+rate-limits after a few queries. Also evaluated: the Agentverse "Brave Search Agent"
+(`agent1q0vdmfxx6mhfam5j82ur6f47dydn2uth7llmff2amwc9g0v7armmymz5lu3`): acknowledged after 11.6 s, no answer in 45 s.
+
+Caterers whose real menu has no public prices are shown as **Price on request** with their menu and a
+"Request a confirmed quote" button; we never invent a price.
 
 ## Test
 
