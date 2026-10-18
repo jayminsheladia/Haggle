@@ -36,6 +36,7 @@ from vendors.template import PROTOCOL_DIGEST
 load_dotenv()
 
 AGENTVERSE_SEARCH_URL = "https://agentverse.ai/v1/search/agents"
+SEARCH_FETCH = 50  # Agentverse search accepts at most 50
 HTTP_TIMEOUT_S = 10
 
 # Results cached per area (build plan): repeat searches cost no Places quota.
@@ -78,18 +79,20 @@ async def agentverse_vendors(limit: int, client: httpx.AsyncClient) -> list[Vend
             "search_text": "",  # the digest filter alone selects Haggle vendors
             "filters": {"protocol_digest": [digest]},
             "offset": 0,
-            "limit": limit,
+            "limit": SEARCH_FETCH,  # fetch them all: unnamed test agents would otherwise take the top slots
         },
     )
     r.raise_for_status()
-    return [
-        VendorInfo(name=a.get("name") or a["address"], source="agentverse", agent_address=a["address"],
+    found = [
+        VendorInfo(name=a["name"], source="agentverse", agent_address=a["address"],
                    claimed="✓ Verified" in (a.get("description") or ""),  # set by vendors/template.py
                    business_name=_business_name(a.get("description") or ""),
                    photo_url=a.get("avatar_href") or "")
         for a in r.json().get("agents", [])
-        if a.get("status") == "active"
+        if a.get("status") == "active" and a.get("name")  # unnamed = stray test registrations, not a business
     ]
+    found.sort(key=lambda v: not v.claimed)  # connected caterers first: they quote and negotiate live
+    return found[:limit]
 
 
 async def places_vendors(
