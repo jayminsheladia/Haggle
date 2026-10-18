@@ -52,9 +52,11 @@ def menus() -> list[Path]:
 
 
 def prompt_for(menu: VendorMenu) -> str:
-    dishes = ", ".join(i.name for i in menu.items[:5]) or "catering dishes"
-    return (f"A warm, appetizing, realistic photo of a catering spread for an event, featuring {dishes}, "
-            "served on a buffet table. Natural light. No text, no logos, no people.")
+    # Dish *names* make the model draw name labels, so describe the food in lowercase plain words instead.
+    dishes = ", ".join(i.name.lower() for i in menu.items[:4]) or "catering dishes"
+    return (f"A warm, appetizing, realistic overhead photo of a catering buffet with food such as {dishes}. "
+            "Natural light. The image must contain absolutely no text, letters, words, labels, signs, menus, "
+            "logos or people.")
 
 
 async def places_pass() -> list[Path]:

@@ -1,0 +1,28 @@
+{
+  "name": "Flair Project | Cocktail Catering & Bartending",
+  "slug": "flair-project-cocktail-catering",
+  "source_url": "https://flairproject.tulensystems.com/beverly-hills",
+  "place_id": "ChIJ23tp93m5woARKPZbMQ2kQMA",
+  "phone": "(805) 280-8507",
+  "email": "",
+  "address": "151 N Almont Dr Suite 203, Beverly Hills, CA 90211, USA",
+  "lat": null,
+  "lng": null,
+  "items": [],
+  "claimed": false,
+  "owner_contact": null,
+  "rules": {
+    "floor_discount_pct": 12.0,
+    "min_headcount": 10,
+    "max_headcount": 200,
+    "lead_time_hours": 48,
+    "delivery_radius_mi": 10.0,
+    "blackout_dates": [],
+    "auto_approve_limit_usd": 2000.0,
+    "delivery_fee_usd": 0.0
+  },
+  "extraction_status": "estimated",
+  "extracted_at": "2026-10-18T07:06:54.050590+00:00",
+  "rating": null,
+  "photo_url": "https://lh3.googleusercontent.com/grass-cs/AABkmLc3cSopiCUAdjGHuEM8xMpofGWXopL6BqiNI9F_0FrTJAdSBhLDOfoVVS_2dsxv3zchA87PtlP-EykVDnTLonwlA9djs28tvI0KebRSo0UWRihrwiG8dr0GyPO70iXcrdahyJLcqr6V9Bgr=s4800-w800"
+}
