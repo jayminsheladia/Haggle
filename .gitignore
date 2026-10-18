@@ -4,3 +4,6 @@ venv/
 __pycache__/
 *.pyc
 .DS_Store
+
+# uAgents local storage (session state)
+agent*_data.json
