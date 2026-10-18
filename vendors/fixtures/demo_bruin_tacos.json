@@ -1,0 +1,12 @@
+{
+  "vendor_id": "demo-bruin-tacos",
+  "name": "Bruin Tacos (demo)",
+  "claimed": true,
+  "rules": {"floor_pct": 8, "min_headcount": 15, "max_headcount": 65, "lead_time_h": 24,
+            "radius_mi": 8, "blackout_dates": [], "auto_approve_usd": 1200, "delivery_fee_usd": 25},
+  "packages": [
+    {"name": "Taco Bar", "per_head_usd": 13.0, "tags": [], "allergens": []},
+    {"name": "Veggie Taco Bar", "per_head_usd": 12.0, "tags": ["vegetarian"], "allergens": []},
+    {"name": "Halal Carne Asada", "per_head_usd": 15.5, "tags": ["halal"], "allergens": []}
+  ]
+}
