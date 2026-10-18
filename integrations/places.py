@@ -74,6 +74,25 @@ async def geocode(text: str, client: httpx.AsyncClient) -> dict | None:
     }
 
 
+async def place_photo(place_id: str, client: httpx.AsyncClient, name: str = "") -> str | None:
+    """The first Google Places photo of a business, as a public URL (no API key in it).
+
+    Looked up with Text Search (the same quota Discovery uses) and matched on place_id.
+    """
+    if not name:
+        return None
+    try:
+        r = await client.post(f"{BASE_URL}/places:searchText", json={"textQuery": name, "pageSize": 5,
+                              "locationBias": _circle(*LA_CENTER, MAX_BIAS_RADIUS_M)},
+                              headers=_headers("places.id,places.photos"))
+        r.raise_for_status()
+        match = next((p for p in r.json().get("places", []) if p.get("id") == place_id), None)
+    except (httpx.HTTPError, ValueError):
+        return None
+    photos = (match or {}).get("photos") or []
+    return await photo_url(photos[0]["name"], client) if photos else None
+
+
 async def photo_url(photo_name: str, client: httpx.AsyncClient, max_width_px: int = 800) -> str | None:
     """Resolve a Places photo to a public image URL that does not contain our API key.
 

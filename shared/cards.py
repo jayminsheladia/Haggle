@@ -119,15 +119,15 @@ def event_form(rfq_id: str, ask: dict[str, str], have: dict[str, str]) -> dict:
 def vendor_picker(rfq_id: str, location: str, vendors: list[dict]) -> dict:
     """Custom card: every discovered caterer with a checkbox, then "Get quotes".
 
-    vendors: [{"vendor_id", "name", "photo_url", "meta", "live"}] where `live` means the vendor
-    already has a Haggle agent; the others get one from the Factory when picked.
+    vendors: [{"vendor_id", "name", "photo_url", "meta", "connected"}] where `connected` means the business
+    claimed its Haggle agent (negotiates); the others are unclaimed (estimates from the public menu).
     """
     rows: list[dict] = []
     for i, v in enumerate(vendors):
         badge = (
-            {"type": "badge", "label": "Haggle agent", "variant": "success"}
-            if v["live"]
-            else {"type": "badge", "label": "From public menu", "variant": "info"}
+            {"type": "badge", "label": "Connected", "variant": "success"}
+            if v["connected"]
+            else {"type": "badge", "label": "Not connected", "variant": "info"}  # no grey variant in the spec
         )
         rows.append({
             "type": "group",

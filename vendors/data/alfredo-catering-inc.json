@@ -1,14 +1,36 @@
 {
   "name": "Alfredo Catering Inc",
   "slug": "alfredo-catering-inc",
-  "source_url": "http://alfredocatering.net/",
+  "source_url": "http://alfredocatering.net/menu-gallery-menu--galeria",
   "place_id": "ChIJhzJypl25woARxRF6mhnJvt0",
   "phone": "(310) 246-0423",
   "email": "",
   "address": "",
   "lat": null,
   "lng": null,
-  "items": [],
+  "items": [
+    {
+      "name": "BBQ Kabob Package #1 - 25 people",
+      "price_per_person": 40.0,
+      "description": "Kabob package; provides more than enough food for the given guest count. Most stations priced similarly except Brazilian and pizza.",
+      "dietary_tags": [],
+      "serves": 25
+    },
+    {
+      "name": "BBQ Kabob Package #1 - 30 people",
+      "price_per_person": 36.67,
+      "description": "Kabob package; provides more than enough food for the given guest count. Most stations priced similarly except Brazilian and pizza.",
+      "dietary_tags": [],
+      "serves": 30
+    },
+    {
+      "name": "BBQ Kabob Package #1 - 35 people",
+      "price_per_person": 34.29,
+      "description": "Kabob package; provides more than enough food for the given guest count. Most stations priced similarly except Brazilian and pizza.",
+      "dietary_tags": [],
+      "serves": 35
+    }
+  ],
   "claimed": false,
   "owner_contact": null,
   "rules": {
@@ -21,7 +43,8 @@
     "auto_approve_limit_usd": 2000.0,
     "delivery_fee_usd": 0.0
   },
-  "extraction_status": "estimated",
-  "extracted_at": "2026-10-18T02:24:05.405111+00:00",
-  "rating": null
+  "extraction_status": "extracted",
+  "extracted_at": "2026-10-18T03:49:04.331181+00:00",
+  "rating": null,
+  "photo_url": "https://lh3.googleusercontent.com/grass-cs/AABkmLd94TFxDl4NalcPqTpxYM9QEclNdsnuhmu7tor169qHsSqUmMuTcO5sYvxthNGku7Qe8kY-cUDObJoMBDyNAZaay3rxC-y__ICf5ZUp5vfIaXsCrWL-69lhBkNp8eQ1ttjTPoE=s4800-w600"
 }

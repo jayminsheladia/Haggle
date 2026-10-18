@@ -54,6 +54,7 @@ class Quote(Model):
     expires_in_s: int = 0  # 0 = no expiry given
     menu_preview: List[str] = []  # a few menu items with prices, for the quote's detail card
     menu_url: str = ""  # the public menu page the prices come from
+    photo_url: str = ""
     trace: str = ""
 
 
@@ -226,6 +227,7 @@ class VendorInfo(Model):
     lat: Optional[float] = None
     lng: Optional[float] = None
     distance_mi: float = 0.0  # 0.0 for Agentverse vendors (no location yet)
+    claimed: bool = False  # the business set up (claimed) its agent: "Connected"
 
 
 class DiscoveryResult(Model):

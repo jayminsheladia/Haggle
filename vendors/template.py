@@ -35,13 +35,13 @@ from shared.llm import chat_json, chat_text
 from shared.menu_schema import OwnerRules, VendorMenu
 from shared.models import RFQ, Accept, Counter, Decline, OwnerReply, OwnerReplyResult, Quote
 from shared.selection import parse_selection
-from vendors.pricing import check_rules, counter_response, floor_price, price_for
+from vendors.pricing import UNLABELED, check_rules, counter_response, floor_price, price_for
 
 PROTOCOL_NAME = "HaggleNegotiation"
 PROTOCOL_VERSION = "0.1.0"
 # Digest of the HaggleNegotiation protocol as built below. Discovery filters Agentverse search by it;
 # vendors/vendor_host.py checks it on startup, so update it if the messages or handlers change.
-PROTOCOL_DIGEST = "proto:5a4938c87119b9544f09bd39aaeb8d99dd68be6b1eef86f3e80f44ba815232ca"
+PROTOCOL_DIGEST = "proto:ddbe385f541a21e0d340705c876eb1a27888090f2ca8fc0c8d535e5851f201f7"
 
 DATA_DIR = Path(__file__).parent / "data"
 README_DIR = Path(__file__).parent / "readme"
@@ -185,7 +185,7 @@ def make_vendor_agent(menu: VendorMenu | dict, seed: str, on_menu_change: Option
             items=lines, claimed=menu.claimed, estimate=not menu.claimed, status=status, note=note,
             version=rfq.version, dietary_ok=ok, conflicts=conflicts,
             expires_in_s=QUOTE_EXPIRES_S if menu.claimed else 0, menu_preview=preview,
-            menu_url=menu.source_url, trace=rfq.trace,
+            menu_url=menu.source_url, photo_url=menu.photo_url, trace=rfq.trace,
         )
 
     def decline(rfq_id: str, version: int, reason: str, trace: str = "") -> Decline:
@@ -284,8 +284,9 @@ def make_vendor_agent(menu: VendorMenu | dict, seed: str, on_menu_change: Option
                 return
 
             violations = check_rules(menu.rules, rfq, vendor_lat=menu.lat, vendor_lng=menu.lng)
-            price, lines, ok, conflicts = price_for(menu, rfq)
-            hard_conflicts = conflicts
+            # Unclaimed public menus rarely label diets: quote anyway and flag it; allergies stay hard filters.
+            price, lines, ok, conflicts = price_for(menu, rfq, unlabeled_ok=not menu.claimed)
+            hard_conflicts = [c for c in conflicts if UNLABELED not in c]
             st = {"rfq": rfq.json(), "negotiator": sender}
             if not menu.priced_items:
                 reply = decline(rfq.rfq_id, rfq.version, NO_PRICES, rfq.trace)

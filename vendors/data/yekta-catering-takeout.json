@@ -8,7 +8,50 @@
   "address": "11939 Santa Monica Blvd, Los Angeles, CA 90025",
   "lat": null,
   "lng": null,
-  "items": [],
+  "items": [
+    {
+      "name": "Ghormeh Sabzi",
+      "price_per_person": 20.5,
+      "description": "Sautéed herbs (parsley, spinach, fenugreek, chives) cooked with dried limes, chunk of shoulder beef and red kidney beans",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Beef Kobideh",
+      "price_per_person": 19.5,
+      "description": "Two skewers of charbroiled ground beef seasoned with onions and spices served with grilled tomato, Serrano pepper, onion.",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Beef Soltani Kabob",
+      "price_per_person": 34.5,
+      "description": "A combination of beef Barg and skewer of Kobideh served with grilled tomato, Serrano pepper, onion.",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Gheymeh",
+      "price_per_person": 21.99,
+      "description": "Chunks of shoulder beef cooked in tomato paste, yellow split peas and skinny fries at top",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Chicken Tender Kabob",
+      "price_per_person": 20.95,
+      "description": "Charbroiled marinated juicy chicken tender served with grilled tomato, Serrano pepper, onion.",
+      "dietary_tags": [],
+      "serves": null
+    },
+    {
+      "name": "Chicken Kobideh",
+      "price_per_person": 19.5,
+      "description": "Two Skewers of charbroiled ground chicken served with grilled tomato, Serrano pepper, onion.",
+      "dietary_tags": [],
+      "serves": null
+    }
+  ],
   "claimed": false,
   "owner_contact": null,
   "rules": {
@@ -21,7 +64,8 @@
     "auto_approve_limit_usd": 2000.0,
     "delivery_fee_usd": 0.0
   },
-  "extraction_status": "estimated",
-  "extracted_at": "2026-10-18T02:10:04.010604+00:00",
-  "rating": null
+  "extraction_status": "extracted",
+  "extracted_at": "2026-10-18T03:49:54.265721+00:00",
+  "rating": null,
+  "photo_url": "https://s0.wp.com/i/blank.jpg?m=1383295312i"
 }

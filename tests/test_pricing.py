@@ -42,6 +42,12 @@ class PriceFor(unittest.TestCase):
         self.assertFalse(ok)
         self.assertIn("no kosher items", conflicts)
 
+    def test_unlabeled_public_menu_is_priced_and_flagged(self):
+        total, lines, ok, conflicts = price_for(menu(), rfq(dietary={"kosher": 5}), unlabeled_ok=True)
+        self.assertFalse(ok)
+        self.assertIn("kosher options not labeled on the menu", conflicts)
+        self.assertEqual(next(li for li in lines if li.group == "kosher").per_head_usd, 15.0)  # whole-menu average
+
     def test_allergy_removes_items_and_unknown_allergen_is_a_conflict(self):
         _, lines, ok, _ = price_for(menu(), rfq(dietary={"vegetarian": 10}, allergies=["nuts"]))
         veg = next(li for li in lines if li.group == "vegetarian")

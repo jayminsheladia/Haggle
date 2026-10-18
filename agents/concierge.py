@@ -472,7 +472,8 @@ def merge_vendors(entries: list[dict]) -> list[dict]:
             merged[e["vendor_id"]] = e
             continue
         agent, places = (old, e) if old["live"] else (e, old)
-        merged[e["vendor_id"]] = {**places, "agent_address": agent["agent_address"], "live": True}
+        merged[e["vendor_id"]] = {**places, "agent_address": agent["agent_address"], "live": True,
+                                  "claimed": agent.get("claimed", False)}
     return list(merged.values())
 
 
@@ -480,15 +481,16 @@ async def send_picker(ctx: Context, user: str, s: dict) -> None:
     vendors = s["vendors"]
     live = sum(v["live"] for v in vendors)
     loc = s["location"]["resolved"]
-    note = (f"{live} already have a Haggle agent; for the others I'll read their public menus and get estimates."
-            if live else "I'll read their public menus and get estimates from them.")
+    connected = sum(bool(v.get("claimed")) for v in vendors)
+    note = (f"{connected} {'are' if connected != 1 else 'is'} connected to Haggle and can negotiate; for the others "
+            "I'll use their public menus." if connected else "I'll get estimates from their public menus.")
     await ctx.send(user, card_message(
         f"I found {len(vendors)} caterers near {loc}. {note} Pick the ones you want quotes from.",
         "custom",
         vendor_picker(
             s["rfq_id"], loc,
             [{"vendor_id": v["vendor_id"], "name": v["display_name"], "photo_url": v["photo_url"],
-              "meta": v["meta"], "live": v["live"]} for v in vendors],
+              "meta": v["meta"], "connected": v.get("claimed", False)} for v in vendors],
         ),
     ))
 
@@ -763,6 +765,7 @@ def quote_view(s: dict, vid: str) -> dict:
         badges.append(("Over budget", "warning"))
     if q["estimate"]:
         badges.append(("Estimate · not confirmed", "warning"))
+    badges.insert(0, ("Connected", "success") if q["claimed"] else ("Not connected", "info"))
     if q["status"] == "needs_approval":
         badges.append(("Needs owner approval", "warning"))
     sub = [f"#{s['ranked'].index(vid) + 1}"]
@@ -773,7 +776,7 @@ def quote_view(s: dict, vid: str) -> dict:
     return {
         "vendor_id": vid,
         "name": q["vendor_name"],
-        "photo_url": v.get("photo_url", ""),
+        "photo_url": v.get("photo_url") or q.get("photo_url", ""),
         "total_usd": q["total_usd"],
         "per_head_usd": q["per_head_usd"],
         "subtitle": " · ".join(sub),

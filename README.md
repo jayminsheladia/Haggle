@@ -40,7 +40,7 @@ Haggle is a multi-agent group catering marketplace for Los Angeles, built on Fet
 
 Every agent prints its address on startup — paste it here right away.
 
-Vendors marked **(demo)** are fictional businesses with realistic prices, claimed so they can negotiate. Every other vendor is a real LA caterer, unclaimed: its prices are copied from its public menu (Sunnin, UCLA, California Fresh), or it has no public prices and asks for a quote instead.
+Vendors with slugs starting `demo-` (Bruin Tacos, Westwood Grill, Saffron & Sage, Green Fork) are fictional businesses with realistic prices, claimed so they can negotiate; cards show them as **Connected**. Every other vendor is a real LA caterer, **Not connected** (unclaimed): its prices are copied from its public menu (Sunnin, Yekta, Alfredo, UCLA, California Fresh), or it publishes no prices and asks for a quote instead.
 
 Vendor addresses come from each vendor's slug + `VENDOR_SEED_SECRET`, so they match only with the team's shared secret; the vendor host writes the current list to `vendors/addresses.json`.
 
@@ -109,9 +109,14 @@ Agent storage (sessions, approvals) lives in the container and resets on redeplo
 
 ## External agents
 
-None in use. Evaluated and rejected: Agentverse "Website Scraper Agent"
-(`agent1qwnjmzwwdq9rjs30y3qw988htrvte6lk2xaak9xg4kz0fsdz0t9ws4mwsgs`) as a backup page reader for the Factory: it was
-blocked by the same sites (HTTP 403) and took 13.6 s, over our ~5 s limit.
+None in use. Evaluated as backups for finding menus, and rejected (CLAUDE.md requires answers in ~5 s):
+- "Website Scraper Agent" (`agent1qwnjmzwwdq9rjs30y3qw988htrvte6lk2xaak9xg4kz0fsdz0t9ws4mwsgs`): blocked by the same
+  sites (HTTP 403), 13.6 s.
+- "Tavily Search Agent" (`agent1qt5uffgp0l3h9mqed8zh8vy5vs374jl2f8y0mjjvqm44axqseejqzmzx9v8`): 17.7 s, returns a prose
+  summary without page links (it confirmed Beverly Catering publishes no prices).
+
+Instead the Factory follows each site's own menu/catering links (and /catering, /menu) and keeps the page with the most
+prices; photos come from the site's preview image or Google Places.
 
 ## Test
 

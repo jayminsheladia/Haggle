@@ -28,6 +28,7 @@ from dotenv import load_dotenv
 from uagents import Agent, Context, Protocol
 from uagents_core.contrib.protocols.chat import ChatAcknowledgement, ChatMessage, TextContent, chat_protocol_spec
 
+from integrations import places
 from shared import observability
 from shared.cards import text_message
 from shared.menu_schema import VendorMenu, slugify
@@ -82,6 +83,9 @@ async def onboard(ctx: Context, req: OnboardRequest, progress: Progress | None =
                 menu, reason = VendorMenu(name=req.business_name, slug=slug, place_id=req.place_id,
                                           phone=req.phone, email=req.email), "no website to read"
         timings["extract"] = time.monotonic() - t
+        if not menu.photo_url and menu.place_id:
+            async with httpx.AsyncClient(timeout=10) as client:
+                menu.photo_url = await places.place_photo(menu.place_id, client, menu.name) or ""
         DATA_DIR.mkdir(exist_ok=True)
         (DATA_DIR / f"{menu.slug}.json").write_text(menu.model_dump_json(indent=2) + "\n")
 

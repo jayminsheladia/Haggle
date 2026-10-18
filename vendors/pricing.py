@@ -50,11 +50,16 @@ def _package(items: list[MenuItem]) -> str:
     return ", ".join(names) + (f" +{len(items) - 3} more" if len(items) > 3 else "")
 
 
-def price_for(menu: VendorMenu, rfq: RFQ) -> tuple[float, list[LineItem], bool, list[str]]:
+UNLABELED = "options not labeled on the menu"
+
+
+def price_for(menu: VendorMenu, rfq: RFQ, unlabeled_ok: bool = False) -> tuple[float, list[LineItem], bool, list[str]]:
     """List price for an RFQ: (price_usd, line_items, dietary_ok, conflicts).
 
     Each dietary group (and "standard" for everyone else) is priced at the average per-person price of
     the menu items that fit it; extras only if the menu lists them; plus the delivery fee.
+    unlabeled_ok: the menu has no dietary labels at all (public menus often don't), so a dietary group with no
+    labeled items is priced from the whole menu and flagged "<diet> options not labeled on the menu".
     """
     conflicts: list[str] = []
     if not menu.priced_items:
@@ -80,6 +85,9 @@ def price_for(menu: VendorMenu, rfq: RFQ) -> tuple[float, list[LineItem], bool, 
     lines: list[LineItem] = []
     for group, n in groups.items():
         fits = safe if group == "standard" else [i for i in safe if DIET_TAGS.get(group, {group}) & set(i.dietary_tags)]
+        if not fits and unlabeled_ok and safe:
+            conflicts.append(f"{_label(group)} {UNLABELED}")
+            fits = safe
         if not fits:
             conflicts.append(f"no {_label(group)} items")
             continue

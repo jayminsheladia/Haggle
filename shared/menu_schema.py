@@ -63,6 +63,7 @@ class VendorMenu(BaseModel):
     extraction_status: Literal["extracted", "estimated"] = "estimated"
     extracted_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     rating: Optional[float] = None
+    photo_url: str = ""  # from the business's website (og:image) or Google Places
 
     @property
     def display_name(self) -> str:

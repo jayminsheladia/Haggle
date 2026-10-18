@@ -44,7 +44,8 @@ async def agentverse_vendors(limit: int, client: httpx.AsyncClient) -> list[Vend
     )
     r.raise_for_status()
     return [
-        VendorInfo(name=a.get("name") or a["address"], source="agentverse", agent_address=a["address"])
+        VendorInfo(name=a.get("name") or a["address"], source="agentverse", agent_address=a["address"],
+                   claimed="✓ Verified" in (a.get("description") or ""))  # set by vendors/template.py
         for a in r.json().get("agents", [])
         if a.get("status") == "active"
     ]
