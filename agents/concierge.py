@@ -25,7 +25,7 @@ from uagents_core.contrib.protocols.chat import (
 
 from shared import observability
 from shared.cards import (
-    DIETS, card_message, event_form, picker_carousel, quote_detail, quotes_carousel, review_card, text_message, usd,
+    DIETS, card_message, event_form, picker_grid, quote_detail, quotes_carousel, review_card, text_message, usd,
 )
 from shared.llm import chat_json
 from shared.models import (
@@ -360,10 +360,6 @@ async def _on_chat(ctx: Context, sender: str, msg: ChatMessage):
         await ctx.send(sender, text_message("That card is from an earlier request. Here's where we are now."))
         await show_current(ctx, sender, s)
         return
-    if action == "toggle_vendor" and s.get("vendors"):
-        await toggle_vendor(ctx, sender, s, sel, text)
-        ctx.storage.set(sender, s)
-        return
     if action in ("select_vendors", "select_all") and s.get("vendors"):
         await pick_vendors(ctx, sender, s, sel, text)
         ctx.storage.set(sender, s)
@@ -399,7 +395,7 @@ async def _on_chat(ctx: Context, sender: str, msg: ChatMessage):
             s["version"] += 1  # the request changed: old quotes must not be mixed with new ones
         s["searched_fp"] = fingerprint(checklist)
         for k in ("vendors", "quotes", "ranked", "fits", "declined", "list_prices", "shortlist", "countering",
-                  "picked", "negolog"):
+                  "negolog"):
             s.pop(k, None)
         s["stage"] = "discovering"
         s["asked"] = []
@@ -464,7 +460,7 @@ def vendor_entry(v) -> dict:
     if v.source == "places":
         meta.append(f"{v.distance_mi} mi away")
     d.update(vendor_id=vid, display_name=name, live=bool(v.agent_address),
-             meta=" · ".join(meta) or "Haggle vendor agent")
+             meta=" · ".join(meta))
     return d
 
 
@@ -490,30 +486,15 @@ async def send_picker(ctx: Context, user: str, s: dict) -> None:
     connected = sum(bool(v.get("claimed")) for v in vendors)
     note = (f"{connected} {'are' if connected != 1 else 'is'} connected to Haggle and can negotiate; for the others "
             "I'll use their public menus." if connected else "I'll get estimates from their public menus.")
-    picked = s.setdefault("picked", [])
-    lead = (f"Selected: {', '.join(v['display_name'] for v in vendors if v['vendor_id'] in picked)}. "
-            "Select more, or swipe to the end and tap Get quotes." if picked else
-            f"I found {len(vendors)} caterers near {loc}. {note} Swipe through and select the ones you want quotes from.")
     await ctx.send(user, card_message(
-        lead,
-        "carousel",
-        picker_carousel(
+        f"I found {len(vendors)} caterers near {loc}. {note} Tap the ones you want quotes from, then Get quotes.",
+        "custom",
+        picker_grid(
             s["rfq_id"], loc,
             [{"vendor_id": v["vendor_id"], "name": v["display_name"], "photo_url": v["photo_url"],
               "meta": v["meta"], "connected": v.get("claimed", False)} for v in vendors],
-            set(picked),
         ),
     ))
-
-
-async def toggle_vendor(ctx: Context, user: str, s: dict, sel: dict, text: str) -> None:
-    ids = [v["vendor_id"] for v in s["vendors"]]
-    vid = sel.get("vendor_id") if sel.get("vendor_id") in ids else next(
-        (v["vendor_id"] for v in s["vendors"] if v["display_name"].lower() in text.lower()), None)
-    if vid:
-        picked = s.setdefault("picked", [])
-        picked.remove(vid) if vid in picked else picked.append(vid)
-    await send_picker(ctx, user, s)
 
 
 @discovery.on_message(DiscoveryResult)
@@ -596,13 +577,19 @@ async def pick_vendors(ctx: Context, user: str, s: dict, sel: dict, text: str) -
     if sel.get("action") == "select_all":
         idx = list(range(len(vendors)))
     else:
-        idx = [i for i, v in enumerate(vendors) if v["vendor_id"] in s.get("picked", [])]
-        idx = idx or [i for i in range(len(vendors)) if _truthy(sel.get(f"pick_{i}"))]
+        picks = sel.get("vendors") or []
+        if isinstance(picks, str):  # a list, or "a,b" depending on how the drawer serializes it
+            try:
+                picks = json.loads(picks)
+            except ValueError:
+                picks = [x.strip() for x in picks.split(",")]
+        picks = set(picks if isinstance(picks, list) else [picks])
+        idx = [i for i, v in enumerate(vendors) if v["vendor_id"] in picks]
         if not idx:  # planner prose: "picked pick_0 and pick_3" or caterer names
             idx = sorted({int(m) for m in re.findall(r"\bpick_(\d+)\b", text) if int(m) < len(vendors)}
                          | {i for i, v in enumerate(vendors) if v["display_name"].lower() in text.lower()})
     if not idx:
-        await ctx.send(user, text_message("Select at least one caterer, or tap \"Quote all\"."))
+        await ctx.send(user, text_message("Tap at least one caterer, or tap \"Quote all\"."))
         await send_picker(ctx, user, s)
         return
 

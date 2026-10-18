@@ -211,43 +211,39 @@ def review_card(rfq_id: str, vendor_id: str, title: str, rows: list[tuple[str, s
     }
 
 
-def picker_carousel(rfq_id: str, location: str, vendors: list[dict], picked: set[str]) -> dict:
-    """Swipeable caterer picker: each card toggles Select / Selected, then "Get quotes" at the end.
+def picker_grid(rfq_id: str, location: str, vendors: list[dict]) -> dict:
+    """Caterer picker in ONE card: an image-tile grid where the user taps as many as they like (the drawer keeps
+    the picks), then "Get quotes" sends them all at once. Nothing is re-sent while picking.
 
     vendors: [{"vendor_id", "name", "photo_url", "meta", "connected"}]
     """
-    def sel(action: str, vendor_id: str = "") -> dict:
-        return {"action": action, "rfq_id": rfq_id, "vendor_id": vendor_id}
+    def label(v: dict) -> str:
+        status = "✓ Connected" if v["connected"] else "Not connected"
+        return " · ".join(x for x in (v["name"], v["meta"], status) if x)
 
-    items = []
-    for v in vendors:
-        chosen = v["vendor_id"] in picked
-        badges = [{"label": "Connected", "variant": "success"} if v["connected"]
-                  else {"label": "Not connected", "variant": "info"}]  # no grey variant in the spec
-        if chosen:
-            badges.insert(0, {"label": "✓ Selected", "variant": "success"})
-        items.append({
-            "id": v["vendor_id"],
-            **({"image": v["photo_url"]} if v["photo_url"] else {}),
-            "title": v["name"],
-            "subtitle": v["meta"],
-            "badges": badges,
-            "secondary_text": "Selected" if chosen else "Not selected",
-            "primary_cta": {"label": "Remove" if chosen else "Select", "selection": sel("toggle_vendor", v["vendor_id"])},
-        })
-    n = len(picked)
-    items.append({
-        "id": "get_quotes_selected",
-        "title": f"Get quotes from {n} selected" if n else "Select caterers first",
-        "subtitle": "Swipe back to change your picks",
-        "secondary_text": "Nobody is contacted until you tap this",
-        "primary_cta": {"label": "Get quotes", "selection": sel("select_vendors")},
-    })
-    items.append({
-        "id": "get_quotes_all",
-        "title": "Get quotes from all",
-        "subtitle": f"All {len(vendors)} caterers",
-        "secondary_text": "Quick option",
-        "primary_cta": {"label": "Quote all", "selection": sel("select_all")},
-    })
-    return {"title": f"Caterers near {location}", "subtitle": "Select the ones you want quotes from", "items": items}
+    def button(text: str, action: str, primary: bool = False) -> dict:
+        return {"type": "button", "label": text, "primary": primary,
+                "action": {"selection": {"action": action, "rfq_id": rfq_id, "vendor_id": ""}}}
+
+    return {
+        "root": {
+            "type": "section",
+            "title": f"Caterers near {location}",
+            "subtitle": "Tap every caterer you want quotes from, then Get quotes. Nobody is contacted until then.",
+            "children": [
+                {
+                    "type": "choice_grid",
+                    "name": "vendors",
+                    "multi": True,
+                    "choices": [
+                        {"value": v["vendor_id"], "label": label(v), **({"image": v["photo_url"]} if v["photo_url"] else {})}
+                        for v in vendors
+                    ],
+                },
+                {"type": "group", "direction": "row", "gap": 8, "children": [
+                    button("Get quotes", "select_vendors", primary=True),
+                    button("Quote all", "select_all"),
+                ]},
+            ],
+        }
+    }
