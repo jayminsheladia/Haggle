@@ -150,7 +150,8 @@ def quote_detail(rfq_id: str, q: dict, can_negotiate: bool, next_step: str = "")
     ctas = []
     if next_step:
         ctas.append({
-            "label": "Book" if next_step == "book" else "Request a confirmed quote",
+            "label": "Book" if next_step == "book" else
+                     "Email them for a quote" if q.get("price_text") else "Request a confirmed quote",
             "primary": True,
             "selection": {"action": next_step, "rfq_id": rfq_id, "vendor_id": q["vendor_id"]},
         })
@@ -285,6 +286,66 @@ def picker_slider(rfq_id: str, location: str, vendors: list[dict]) -> dict:
                     button("Get quotes", "select_vendors", primary=True),
                     button("Quote all", "select_all"),
                 ]},
+            ],
+        }
+    }
+
+
+def leftovers_form(rfq_id: str, vendor_name: str) -> dict:
+    """Post-event check-in: leftovers (for food rescue) and a rating. Every option value is matched in code."""
+    def select(name: str, label: str, options: list[tuple[str, str]], required: bool = False) -> dict:
+        return {"name": name, "kind": "select", "label": label, "required": required,
+                "options": [{"value": v, "label": lab} for v, lab in options]}
+
+    return {
+        "title": "How did it go?",
+        "fields": [
+            select("amount", "Leftover food", [("none", "None, it all got eaten"), ("little", "A little (a few servings)"),
+                                               ("tray", "About a full tray"), ("several", "Several trays")], True),
+            select("food_type", "What kind", [("hot", "Hot prepared food"), ("cold", "Cold prepared (salads, sandwiches)"),
+                                              ("packaged", "Sealed, packaged items"), ("produce", "Whole fruit or vegetables")]),
+            select("kept_safe", "Kept hot or cold, and out under 2 hours?",
+                   [("yes", "Yes"), ("no", "No"), ("unsure", "Not sure")]),
+            select("handoff", "Handoff", [("dropoff", "I can drop it off"), ("pickup", "I need a pickup")]),
+            select("rating", f"Rate {vendor_name}", [(str(n), "★" * n) for n in range(5, 0, -1)]),
+            {"name": "notes", "kind": "text", "label": "Anything else? (optional)", "required": False},
+        ],
+        "submit_cta": {"label": "Find a home for it",
+                       "selection": {"action": "submit_leftovers", "rfq_id": rfq_id, "vendor_id": ""}},
+    }
+
+
+def rescue_carousel(rfq_id: str, title: str, options: list[dict]) -> dict:
+    """Food rescue matches, nearest first; "Choose" sends the rescue request. options: RescueOption dicts."""
+    return {
+        "title": title,
+        "items": [{
+            "id": o["org_id"],
+            "title": o["name"],
+            "subtitle": " · ".join(filter(None, [f"{o['distance_mi']} mi" if o["distance_mi"] else "", o["open_status"]])),
+            "badges": [{"label": "Pickup available" if o["pickup"] else "Drop-off",
+                        "variant": "success" if o["pickup"] else "info"},
+                       {"label": o["open_status"].split(" · ")[0],
+                        "variant": "success" if o["open_status"] == "Open now" else "warning"}],
+            "secondary_text": o["address"] + (f" · {o['phone']}" if o["phone"] else ""),
+            "primary_cta": {"label": "Choose",
+                            "selection": {"action": "select_rescue", "rfq_id": rfq_id, "vendor_id": o["org_id"]}},
+        } for o in options],
+    }
+
+
+def info_card(title: str, subtitle: str, rows: list[tuple[str, str]], badges: list[tuple[str, str]] = ()) -> dict:
+    """Read-only summary (send with terminal=True): booking confirmed, food rescue set."""
+    return {
+        "root": {
+            "type": "section",
+            "title": title,
+            "subtitle": subtitle,
+            "children": [
+                *([{"type": "group", "direction": "row", "gap": 8,
+                    "children": [{"type": "badge", "label": label, "variant": variant} for label, variant in badges]}]
+                  if badges else []),
+                *[{"type": "text", "value": f"{label}: {value}"} for label, value in rows],
             ],
         }
     }

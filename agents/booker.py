@@ -9,8 +9,8 @@ Concierge -> BookingConfirmed (after the deposit's CommitPayment) -> Booker:
 Concierge -> QuoteRequest (an unclaimed caterer) -> Booker emails the caterer for a confirmed quote with a link
 to claim its Haggle agent -> QuoteRequestSent.
 
-Idempotent on rfq_id: a replayed BookingConfirmed never re-charges, re-books or re-emails; it gets the
-stored result. A QuoteRequest is sent once per rfq_id + vendor_id.
+Idempotent on rfq_id + deposit payment: a replayed BookingConfirmed never re-charges, re-books or re-emails; it
+gets the stored result. After a refunded attempt the Concierge takes a new deposit, which is a new attempt. A QuoteRequest is sent once per rfq_id + vendor_id.
 
 Run from the repo root:  python -m agents.booker
 
@@ -90,7 +90,7 @@ async def on_booking(ctx: Context, sender: str, b: BookingConfirmed):
         ctx.logger.warning(f"Ignoring BookingConfirmed from unknown sender {sender}")
         return
     observability.tag(b.trace, b.rfq_id, b.vendor_id)
-    key = f"booking:{b.rfq_id}"
+    key = f"booking:{b.rfq_id}:{b.checkout_session_id}"  # one attempt per deposit payment
     stored = ctx.storage.get(key)
     if stored and stored.get("status") == "in_progress":
         ctx.logger.info(f"[{b.rfq_id}] already being booked; ignoring the duplicate")

@@ -307,3 +307,95 @@ class QuoteRequestSent(Model):
     sent: bool = False
     detail: str = ""
     trace: str = ""
+
+
+# ---- Follow-up and food rescue (Person D) -----------------------------------
+
+
+class EventBooked(Model):
+    """Concierge -> Follow-up once a booking is confirmed: schedules the reminder and the post-event check-in."""
+    rfq_id: str
+    vendor_id: str
+    vendor_name: str
+    event_date: str  # YYYY-MM-DD
+    event_time: str = ""  # HH:MM, 24h, Los Angeles time
+    location: str = ""
+    lat: Optional[float] = None  # venue
+    lng: Optional[float] = None
+    headcount: int = 0
+    trace: str = ""
+
+
+class EventEnded(Model):
+    """Concierge -> Follow-up: the organizer said the event is over (the timed check-in is then skipped)."""
+    rfq_id: str
+    trace: str = ""
+
+
+class FollowupPrompt(Model):
+    """Follow-up -> Concierge, which relays it to the organizer. kind: "reminder" (24 h before) or
+    "checkin" (after the event: the Concierge shows the leftovers form)."""
+    rfq_id: str
+    kind: str
+    text: str = ""
+    trace: str = ""
+
+
+class LeftoverReport(Model):
+    """Concierge -> Follow-up: the leftovers form. amount: none | little | tray | several;
+    food_type: hot | cold | packaged | produce; kept_safe: yes | no | unsure; handoff: pickup | dropoff."""
+    rfq_id: str
+    amount: str
+    food_type: str = ""
+    kept_safe: str = ""
+    handoff: str = ""
+    rating: int = 0  # 1-5, 0 = not rated
+    notes: str = ""
+    trace: str = ""
+
+
+class RescueOption(Model):
+    org_id: str
+    name: str
+    address: str = ""
+    distance_mi: float = 0.0
+    accepts: List[str] = []
+    pickup: bool = False
+    open_status: str = ""  # "Open now", "Closed now", "Hours not published"
+    hours_text: str = ""
+    phone: str = ""
+    directions_url: str = ""
+    source: str = ""
+
+
+class RescueOptions(Model):
+    """Follow-up -> Concierge: up to 3 matches (nearest first), or none with advice. Estimates computed in code."""
+    rfq_id: str
+    options: List[RescueOption] = []
+    advice: str = ""
+    est_lbs: float = 0.0
+    est_meals: int = 0
+    trace: str = ""
+
+
+class RescueRequest(Model):
+    """Concierge -> Follow-up: the organizer chose an organization."""
+    rfq_id: str
+    org_id: str
+    trace: str = ""
+
+
+class RescueConfirmed(Model):
+    """Follow-up -> Concierge. Idempotent on rfq_id: a replayed RescueRequest gets the stored answer."""
+    rfq_id: str
+    org_id: str
+    org_name: str = ""
+    address: str = ""
+    directions_url: str = ""
+    phone: str = ""
+    handoff: str = ""
+    email_sent: bool = False
+    est_lbs: float = 0.0
+    est_meals: int = 0
+    detail: str = ""
+    trace: str = ""

@@ -89,9 +89,10 @@ def mock_payments() -> bool:
 
 
 def charge_test_deposit(*, rfq_id: str, vendor_id: str, vendor_name: str, amount_usd: float, user_address: str,
-                        description: str = "") -> str:
+                        description: str = "", attempt: int = 1) -> str:
     """Mock checkout: charge Stripe's test card (pm_card_visa) in test mode. Returns the PaymentIntent id.
-    Idempotent on rfq_id + amount, so a repeated tap never charges twice."""
+    Idempotent on rfq_id + vendor + amount + attempt, so a repeated tap never charges twice; `attempt` goes up
+    only after a refunded booking, so booking again takes a new deposit instead of reusing the refunded one."""
     s = _stripe()  # refuses live keys
     cents = to_cents(amount_usd)
     if cents < 50:
@@ -102,7 +103,7 @@ def charge_test_deposit(*, rfq_id: str, vendor_id: str, vendor_name: str, amount
         description=description or f"Haggle deposit · {vendor_name}",
         metadata={"rfq_id": rfq_id, "vendor_id": vendor_id, "user_address": user_address,
                   "service": "haggle_deposit", "mock_checkout": "1"},
-        idempotency_key=f"haggle-deposit-{rfq_id}-{cents}",
+        idempotency_key=f"haggle-deposit-{rfq_id}-{vendor_id}-{cents}-{attempt}",
     )
     return intent.id
 
@@ -135,10 +136,10 @@ def verify_deposit(checkout_session_id: str, rfq_id: str, amount_usd: float) -> 
 
 
 def refund_deposit(checkout_session_id: str, rfq_id: str) -> str:
-    """Refund a paid deposit in full (vendor couldn't take the booking). Idempotent on rfq_id. Returns the refund id."""
+    """Refund a paid deposit in full (vendor couldn't take the booking). Idempotent per payment. Returns the refund id."""
     s = _stripe()
     intent = (checkout_session_id if checkout_session_id.startswith("pi_")
               else s.checkout.Session.retrieve(checkout_session_id).payment_intent)
     refund = s.Refund.create(payment_intent=intent, reason="requested_by_customer",
-                             metadata={"rfq_id": rfq_id}, idempotency_key=f"haggle-refund-{rfq_id}")
+                             metadata={"rfq_id": rfq_id}, idempotency_key=f"haggle-refund-{intent}")
     return refund.id

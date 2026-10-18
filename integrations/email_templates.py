@@ -5,7 +5,7 @@ Owner: Person D
 
 from html import escape
 
-from shared.models import BookingConfirmed, QuoteRequest
+from shared.models import BookingConfirmed, LeftoverReport, QuoteRequest
 
 
 def _usd(amount: float) -> str:
@@ -90,3 +90,25 @@ def quote_request(q: QuoteRequest, claim_url: str, reply_by: str) -> tuple[str, 
             + f"\n\nReply to this email with your price, or claim your free Haggle agent: {claim_url}\n"
             "Prices shown to the customer are marked as estimates until you confirm.")
     return subject, _html("Catering quote request", rows, intro, footer), text
+
+
+FOOD_TYPES = {"hot": "hot prepared food", "cold": "cold prepared food", "packaged": "sealed, packaged food",
+              "produce": "whole fruit and vegetables"}
+AMOUNTS = {"little": "a few servings", "tray": "about one full tray", "several": "several trays"}
+
+
+def rescue_request(org_name: str, r: LeftoverReport, location: str, vendor_name: str, est_lbs: float,
+                   est_meals: int) -> tuple[str, str, str]:
+    """(subject, html, text): leftover food offered to a food rescue organization after an event."""
+    handoff = "please arrange a pickup" if r.handoff == "pickup" else "the organizer will drop it off"
+    rows = [
+        ("Food", f"{FOOD_TYPES.get(r.food_type, r.food_type)} from {vendor_name}"),
+        ("Amount", f"{AMOUNTS.get(r.amount, r.amount)} (about {est_lbs:.0f} lb, ~{est_meals} meals; estimate)"),
+        ("Kept safe", "yes: held hot or cold and out for under 2 hours" if r.kept_safe == "yes" else "sealed, shelf-stable"),
+        ("Location", location), ("Handoff", handoff),
+    ] + ([("Notes", r.notes)] if r.notes else [])
+    subject = f"Leftover catering to donate: {AMOUNTS.get(r.amount, r.amount)} (via Haggle)"
+    intro = f"Hi {org_name} team, an event just ended and the organizer would like to donate the leftover food."
+    footer = "Reply to this email to confirm, or call the organizer back. Thank you for rescuing food!"
+    text = intro + "\n\n" + "\n".join(f"- {k}: {v}" for k, v in rows) + "\n\n" + footer
+    return subject, _html("Leftover food to donate", rows, intro, footer), text

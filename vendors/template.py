@@ -52,7 +52,7 @@ QUOTE_EXPIRES_S = 24 * 3600
 OWNER_FIXABLE = ("needs ", "maximum headcount")  # rule violations the owner may waive
 
 UNCLAIMED_NOTE = "Estimate from public menu — not confirmed by the business"
-NO_PRICES = "no public menu prices yet — Haggle can request a quote from the business by email"
+NO_PRICES = "No public menu or prices yet — Haggle can email them for a quote"
 PRICE_ON_REQUEST = "No public prices — request a quote from the business"
 MENU_PREVIEW_ITEMS = 8
 UNCLAIMED_COUNTER = "unclaimed vendor — Haggle will request a quote from the business by email"
@@ -305,16 +305,18 @@ def make_vendor_agent(menu: VendorMenu | dict, seed: str, on_menu_change: Option
                 return
 
             violations = check_rules(menu.rules, rfq, vendor_lat=menu.lat, vendor_lng=menu.lng)
+            day = {r: n for r, n in (ctx.storage.get("booked") or {}).get(rfq.event_date, {}).items() if r != rfq.rfq_id}
+            if menu.claimed and sum(day.values()) + rfq.headcount > menu.rules.max_headcount:
+                violations.append(f"fully booked on {rfq.event_date}")  # don't quote what Accept would refuse
             # Unclaimed public menus rarely label diets: quote anyway and flag it; allergies stay hard filters.
             price, lines, ok, conflicts = price_for(menu, rfq, unlabeled_ok=not menu.claimed)
             hard_conflicts = [c for c in conflicts if UNLABELED not in c]
             st = {"rfq": rfq.json(), "negotiator": sender}
-            if menu.extraction_status != "extracted" and menu.items:
-                # A real menu without (enough) public prices: show it, price on request. Never priced by us.
+            if not menu.priced_items or menu.extraction_status != "extracted":
+                # No (or not enough) public prices: still show the caterer, price on request, so the user can
+                # have Haggle email them for a quote. Never priced by us.
                 reply = build_quote(rfq, 0.0, [], False, ["no public prices"], status="price_on_request",
-                                    note=PRICE_ON_REQUEST)
-            elif not menu.priced_items or menu.extraction_status != "extracted":
-                reply = decline(rfq.rfq_id, rfq.version, NO_PRICES, rfq.trace)
+                                    note=PRICE_ON_REQUEST if menu.items else NO_PRICES)
             elif not menu.claimed:
                 if violations or hard_conflicts:
                     reply = decline(rfq.rfq_id, rfq.version, "; ".join(violations + hard_conflicts), rfq.trace)

@@ -16,7 +16,7 @@ Haggle is a multi-agent group catering marketplace for Los Angeles, built on Fet
 | Vendor Agent Factory | `agents/factory.py` | `agent1qdzh8nw69qe2x0rw3tc7rg8ddt9e6lda8x7y6hqfjwfaldk2k7kzukj7rh5` | [profile](https://agentverse.ai/agents/details/agent1qdzh8nw69qe2x0rw3tc7rg8ddt9e6lda8x7y6hqfjwfaldk2k7kzukj7rh5/profile) |
 | Negotiator | `agents/negotiator.py` | `agent1qg68ah5xmm3t9lcecua0dvqqknkqhqv4scrpf3cjjhx64lrqkpvd7erglhl` | [profile](https://agentverse.ai/agents/details/agent1qg68ah5xmm3t9lcecua0dvqqknkqhqv4scrpf3cjjhx64lrqkpvd7erglhl/profile) |
 | Booker | `agents/booker.py` | `agent1qfq9dyy5q5t5dg7tzuhkuqztzqy9q806dw4qd8v6sg6znu87rmx8s3deu0f` | [profile](https://agentverse.ai/agents/details/agent1qfq9dyy5q5t5dg7tzuhkuqztzqy9q806dw4qd8v6sg6znu87rmx8s3deu0f/profile) |
-| Follow-up | `agents/followup.py` | _TBD_ | _TBD_ |
+| Follow-up | `agents/followup.py` | `agent1q2gyjzpjmgjxxafxvsr08dv3f8mdhawsqq5alz34yqfefrnq9mpgkmy8ktc` | [profile](https://agentverse.ai/agents/details/agent1q2gyjzpjmgjxxafxvsr08dv3f8mdhawsqq5alz34yqfefrnq9mpgkmy8ktc/profile) |
 
 ### Vendor agents
 
@@ -81,6 +81,7 @@ python -m agents.factory        # Vendor Agent Factory, port 8004 (needs the ven
 python -m agents.negotiator     # Negotiator, port 8003
 python -m agents.discovery      # Discovery, port 8002
 python -m agents.booker         # Booker, port 8005
+python -m agents.followup       # Follow-up, port 8006
 python -m agents.concierge      # @haggle, port 8001
 ```
 
@@ -98,10 +99,18 @@ To (re)read the caterers in `vendors/sources.csv` into `vendors/data/`: `python 
 test mode: card 4242 4242 4242 4242) → on `CommitPayment` the Booker verifies the payment with Stripe, sends `Accept` to
 the caterer (refunds if it declines), emails the confirmation with a calendar invite (.ics) and the order to the
 caterer, and texts the organizer by iMessage through Photon's REST API (`PHOTON_PROJECT_ID`, `PHOTON_SENDER_ID` = our shared line's user id) → `CompletePayment`. With `STRIPE_MOCK_PAYMENTS=1` the deposit is a real Stripe test-mode charge on Stripe's test card instead of the checkout UI. "Request a confirmed quote" on an
-unclaimed caterer makes the Booker email it a quote request with a link to claim its agent. During development every
+unclaimed caterer (or "Email them for a quote" on one with no public prices) makes the Booker email it a quote request with a link to claim its agent. During development every
 email goes to `TEAM_INBOX_EMAIL` and texts only to `TEAM_PHONE` / `OWNER_TEST_PHONE`.
 
-_TBD — the Follow-up agent._
+**Follow-up and food rescue:** once a booking is confirmed the Concierge sends `EventBooked` to the Follow-up agent,
+which sends a reminder 24 h before the event (chat + Photon text) and a check-in when it ends (start + 2 h + 15 min).
+Saying "event over" (or "we got the food", "it just ended") in the chat does the check-in right away. The leftovers form
+asks how much is left, what kind, whether it was kept hot or cold, pickup or drop-off, and a rating. The Follow-up
+agent matches `data/food_rescue_orgs.json` in code: food type, food safety (prepared food that wasn't kept safe is
+never offered), pickup/drop-off, open now, distance from the venue → top 3. Choosing one emails the organization
+(team inbox during development), texts the organizer the address, and shows the directions and an impact estimate
+(a little ≈ 6 lb, a tray ≈ 24 lb, several trays ≈ 60 lb; ~1.2 lb per meal). One reminder, check-in and rescue per
+`rfq_id`.
 
 ## Deploy (always-on server)
 

@@ -1,6 +1,6 @@
 """Run every Haggle agent on one server (the build plan's hosting: one always-on box, mailbox mode).
 
-Starts the vendor host, Factory, Negotiator, Discovery and Concierge as child processes in that
+Starts the vendor host, Factory, Negotiator, Discovery, Booker, Follow-up and Concierge as child processes in that
 order, prefixes their logs, and restarts any that exit. Stop with Ctrl+C (or SIGTERM from the host).
 
 Run from the repo root:  python -m scripts.run_all
@@ -21,6 +21,7 @@ AGENTS = [  # (name, module, seconds to wait before starting the next one)
     ("negotiator", "agents.negotiator", 2),
     ("discovery", "agents.discovery", 2),
     ("booker", "agents.booker", 2),
+    ("followup", "agents.followup", 2),
     ("concierge", "agents.concierge", 0),
 ]
 RESTART_DELAY_S = 5

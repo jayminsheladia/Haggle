@@ -1,1 +1,104 @@
-[]
+[
+  {
+    "org_id": "ucla-cpo-food-closet",
+    "name": "UCLA CPO Food Closet",
+    "address": "220 Westwood Plaza, Suite 105, Los Angeles, CA 90095",
+    "lat": 34.0715644,
+    "lng": -118.4440863,
+    "accepts": [
+      "packaged"
+    ],
+    "pickup": false,
+    "dropoff": true,
+    "hours": {
+      "mon": "09:00-16:00",
+      "tue": "09:00-16:00",
+      "wed": "09:00-16:00",
+      "thu": "09:00-16:00",
+      "fri": "09:00-16:00"
+    },
+    "hours_text": "Mon-Fri 9 AM-4 PM (hours vary during finals and campus closures)",
+    "contact_email": "basicneeds@cpo.ucla.edu",
+    "phone": "(310) 825-5969",
+    "source": "https://cpo.ucla.edu/front-page/basic-and-essential-needs-main-page/basic-needs"
+  },
+  {
+    "org_id": "westside-food-bank",
+    "name": "Westside Food Bank",
+    "address": "1710 22nd St, Santa Monica, CA 90404",
+    "lat": 34.0252322,
+    "lng": -118.4731611,
+    "accepts": [
+      "packaged",
+      "produce"
+    ],
+    "pickup": false,
+    "dropoff": true,
+    "hours": {
+      "mon": "07:00-15:00",
+      "tue": "07:00-15:00",
+      "wed": "07:00-15:00",
+      "thu": "07:00-15:00",
+      "fri": "07:00-15:00"
+    },
+    "hours_text": "Warehouse drop-off 7 AM-3 PM (call to confirm days)",
+    "contact_email": "",
+    "phone": "(310) 828-6016",
+    "source": "https://www.wsfb.org/about-us/hours-and-location/"
+  },
+  {
+    "org_id": "la-regional-food-bank",
+    "name": "Los Angeles Regional Food Bank (Extra Helpings)",
+    "address": "1734 E 41st St, Los Angeles, CA 90058",
+    "lat": 34.007599,
+    "lng": -118.241749,
+    "accepts": [
+      "prepared",
+      "packaged",
+      "produce"
+    ],
+    "pickup": true,
+    "dropoff": true,
+    "hours": null,
+    "hours_text": "Call to arrange a pickup or delivery",
+    "contact_email": "",
+    "phone": "(323) 234-3030",
+    "source": "https://211la.org/services/HxDNmP39nfBO0bp6foE3roWUnL9NW1/food-rescue-programs"
+  },
+  {
+    "org_id": "rescuing-leftover-cuisine-la",
+    "name": "Rescuing Leftover Cuisine (Los Angeles)",
+    "address": "Le Conte Ave, Los Angeles, CA 90024",
+    "lat": 34.0640121,
+    "lng": -118.4408899,
+    "accepts": [
+      "prepared"
+    ],
+    "pickup": true,
+    "dropoff": false,
+    "hours": null,
+    "hours_text": "Volunteer pickups by arrangement",
+    "contact_email": "",
+    "phone": "",
+    "source": "https://www.idealist.org/en/volunteer-opportunity/e501b665faa441689c33a1871f8bf040-volunteers-needed-to-rescue-food-fight-food-insecurity-in-la-rescuing-leftover-cuisine-los-angeles"
+  },
+  {
+    "org_id": "food-finders",
+    "name": "Food Finders",
+    "address": "10539 Humbolt St, Los Alamitos, CA 90720",
+    "lat": 33.8089925,
+    "lng": -118.066621,
+    "accepts": [
+      "prepared",
+      "packaged",
+      "produce"
+    ],
+    "pickup": true,
+    "dropoff": false,
+    "hours": null,
+    "hours_text": "Pickups by arrangement with hosts and caterers",
+    "contact_email": "",
+    "phone": "(562) 283-1400",
+    "source": "https://lbpost.com/news/unheard-of-food-finders-rescued-17-million-pounds-of-food-last-year/embed/"
+  }
+]

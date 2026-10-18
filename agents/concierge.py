@@ -28,13 +28,14 @@ from uagents_core.contrib.protocols.payment import CancelPayment, CommitPayment,
 from integrations.stripe_client import charge_test_deposit, create_deposit_checkout, mock_payments, session_status
 from shared import observability
 from shared.cards import (
-    DIETS, card_message, event_form, picker_carousel, picker_slider, quote_detail, quotes_carousel, review_card, text_message, usd,
+    DIETS, card_message, event_form, info_card, leftovers_form, picker_carousel, picker_slider, quote_detail, quotes_carousel,
+    rescue_carousel, review_card, text_message, usd,
 )
 from shared.llm import chat_json
 from shared.models import (
-    RFQ, BookingConfirmed, BookingResult, CounterRequest, CounterResult, DiscoveryRequest, DiscoveryResult,
-    NegotiationRequest, NegotiationResult, OnboardRequest, OnboardResult, Quote, QuoteRequest, QuoteRequestSent,
-    VendorRef,
+    RFQ, BookingConfirmed, BookingResult, CounterRequest, CounterResult, DiscoveryRequest, DiscoveryResult, EventBooked,
+    EventEnded, FollowupPrompt, LeftoverReport, NegotiationRequest, NegotiationResult, OnboardRequest, OnboardResult,
+    Quote, QuoteRequest, QuoteRequestSent, RescueConfirmed, RescueOptions, RescueRequest, VendorRef,
 )
 from shared.menu_schema import slugify
 from shared.payment import build_payment_proto, deposit_request
@@ -52,6 +53,7 @@ NEGOTIATOR_ADDRESS = os.getenv(
 )
 FACTORY_ADDRESS = os.getenv("FACTORY_ADDRESS", "agent1qdzh8nw69qe2x0rw3tc7rg8ddt9e6lda8x7y6hqfjwfaldk2k7kzukj7rh5")
 BOOKER_ADDRESS = os.getenv("BOOKER_ADDRESS", "agent1qfq9dyy5q5t5dg7tzuhkuqztzqy9q806dw4qd8v6sg6znu87rmx8s3deu0f")
+FOLLOWUP_ADDRESS = os.getenv("FOLLOWUP_ADDRESS", "agent1q2gyjzpjmgjxxafxvsr08dv3f8mdhawsqq5alz34yqfefrnq9mpgkmy8ktc")
 # "checkbox" (one card, a Select checkbox per caterer; default) or "carousel" (swipeable, Select per card)
 PICKER_STYLE = os.getenv("PICKER_STYLE", "checkbox")
 ONBOARD_TIMEOUT_S = 75  # the Factory reads menus in parallel; usually well under a minute
@@ -374,6 +376,10 @@ async def _on_chat(ctx: Context, sender: str, msg: ChatMessage):
         return
     if action in ("select_vendors", "select_all") and s.get("vendors"):
         await pick_vendors(ctx, sender, s, sel, text)
+        ctx.storage.set(sender, s)
+        return
+    if s.get("stage") in AFTER_BOOKING:
+        await after_booking(ctx, sender, s, action, sel, text)
         ctx.storage.set(sender, s)
         return
     if action in ("pick_quote", "negotiate", "back", "book", "request_quote", "confirm", "cancel") and s.get("quotes"):
@@ -858,7 +864,7 @@ def detail_rows(s: dict, vid: str) -> list[tuple[str, str]]:
     """Detail card rows: short labels on the left, the detail (which can wrap) on the right."""
     q, v = s["quotes"][vid], _vendor(s, vid)
     if on_request(q):
-        rows = [("Price", "not published: request a quote")]
+        rows = [("Price", "not published: I can email them for a quote")]
     else:
         rows = [("Total", usd(q["total_usd"])), ("Per person", usd(q["per_head_usd"]))]
     if q["delivery_fee_usd"]:
@@ -922,7 +928,8 @@ async def send_detail(ctx: Context, user: str, s: dict, vid: str, narration: str
     q = s["quotes"][vid]
     view = quote_view(s, vid) | {"rows": detail_rows(s, vid)}
     narration = narration or f"{q['vendor_name']}: " + (
-        "no public prices yet, but here's their menu." if on_request(q) else
+        ("no public prices yet, but here's their menu." if q.get("menu_preview") else
+         "no public menu or prices yet.") + " Tap \"Email them for a quote\" and I'll ask them." if on_request(q) else
         f"{usd(q['total_usd'])} for {s['checklist']['headcount']['value']} guests.")
     await ctx.send(user, card_message(narration, "detail", quote_detail(s["rfq_id"], view, can_negotiate(q), next_step(q))))
 
@@ -968,8 +975,10 @@ async def booking_action(ctx: Context, user: str, s: dict, action: str, vid: str
             rows += [("Their estimate", "not published" if on_request(q) else f"{usd(q['total_usd'])} (not confirmed)"),
                      ("Your target", usd(target) if target else "no fixed budget"),
                      ("Sent to", "the business by email, with a link to claim its Haggle agent")]
-            card = review_card(s["rfq_id"], vid, "Request a confirmed quote", rows, "Send request")
-            text = f"{q['vendor_name']} hasn't confirmed its prices. I can ask them for a real quote."
+            card = review_card(s["rfq_id"], vid, "Email them for a quote" if on_request(q) else
+                               "Request a confirmed quote", rows, "Send email")
+            text = (f"{q['vendor_name']} doesn't publish prices. I'll email them your event details and ask for a quote."
+                    if on_request(q) else f"{q['vendor_name']} hasn't confirmed its prices. I can ask them for a real quote.")
         await ctx.send(user, card_message(text, "review", card))
         return
 
@@ -1060,7 +1069,7 @@ async def mock_deposit(ctx: Context, user: str, s: dict, q: dict, when: str) -> 
         intent = await asyncio.to_thread(
             charge_test_deposit, rfq_id=s["rfq_id"], vendor_id=b["vendor_id"], vendor_name=q["vendor_name"],
             amount_usd=b["deposit_usd"], user_address=user,
-            description=f"{DEPOSIT_PCT:.0%} deposit, {when}, {q['vendor_name']}")
+            description=f"{DEPOSIT_PCT:.0%} deposit, {when}, {q['vendor_name']}", attempt=s.get("refunded", 0) + 1)
     except Exception:
         ctx.logger.exception(f"[{s['rfq_id']}] Stripe test charge failed")
         await ctx.send(user, text_message("I couldn't take the test deposit on Stripe just now, so nothing was "
@@ -1141,11 +1150,11 @@ async def on_quote_request_sent(ctx: Context, sender: str, r: QuoteRequestSent):
         s.setdefault("quote_requests", {})[r.vendor_id] = f"sent, reply by {r.reply_by}"
         ctx.storage.set(user, s)
         await ctx.send(user, text_message(
-            f"Request sent to {name}. They have until {r.reply_by} to reply; I'll tell you when they do. "
-            "(During testing the email goes to the team inbox.) You can still book a connected caterer meanwhile."))
+            f"Request sent to {name}. They have until {r.reply_by} to reply by email (during testing it goes to the "
+            "team inbox). You can still book a connected caterer meanwhile."))
     else:
         await ctx.send(user, text_message(f"I couldn't send the request to {name} just now ({r.detail}). "
-                                          "Tap Send request again in a minute."))
+                                          "Tap Send email again in a minute."))
 
 
 @agent.on_interval(period=60)
@@ -1189,16 +1198,28 @@ async def on_booking_result(ctx: Context, sender: str, result: BookingResult):
         if not b.get("mock"):
             await ctx.send(user, CompletePayment(transaction_id=txn))
         cl = s["checklist"]
-        await ctx.send(user, text_message(
-            f"You're booked! {name}, {summary(cl).split(' · ')[0]}, {display('headcount', cl['headcount']['value'])}. "
-            f"Deposit paid: {usd(b['deposit_usd'])}; balance to the caterer: {usd(round(b['total_usd'] - b['deposit_usd'], 2))}."
-            + (" A confirmation email is on its way." if result.email_sent else "")))
+        await ctx.send(FOLLOWUP_ADDRESS, event_booked(s))
+        balance = usd(round(b["total_usd"] - b["deposit_usd"], 2))
+        await ctx.send(user, card_message(
+            f"You're booked with {name}!" + (" A confirmation email with a calendar invite is on its way." if result.email_sent else "")
+            + " I'll remind you the day before. When the event's over, just tell me (\"event over\") and I'll help "
+              "rescue any leftovers.",
+            "custom",
+            info_card("Booking confirmed", name, [
+                ("When", summary(cl).split(" · ")[0]),
+                ("Where", s.get("location", {}).get("resolved") or cl["location"]["value"]),
+                ("Guests", display("headcount", cl["headcount"]["value"])),
+                ("Total", usd(b["total_usd"])), ("Deposit paid", usd(b["deposit_usd"])),
+                ("Balance to the caterer", balance),
+            ], [("Booked", "success"), ("Deposit paid", "success")] + ([("Stripe test mode", "warning")] if b.get("mock") else [])),
+            terminal=True))
         return
 
     if result.status == "vendor_declined":
         if not b.get("mock"):
             await ctx.send(user, CancelPayment(transaction_id=txn, reason=result.detail))
         s.pop("booking", None)
+        s["refunded"] = s.get("refunded", 0) + 1  # the next booking takes a new deposit
         s["stage"] = "choosing"
         ctx.storage.set(user, s)
         await send_carousel(ctx, user, s, f"Sorry: {result.detail}. Pick another caterer.")
@@ -1215,6 +1236,197 @@ async def on_booking_result(ctx: Context, sender: str, result: BookingResult):
     else:
         await ctx.send(user, text_message("I couldn't confirm the payment with Stripe just now. You won't be "
                                           "charged twice: tap the pay button again in a minute."))
+
+
+# ---- After the booking: Follow-up (reminder, "event over", leftovers, food rescue) ----
+
+followup = Protocol(name="HaggleFollowupClient", version="0.1.0")
+
+AFTER_BOOKING = ("booked", "event_over", "rescue_options", "done")
+EVENT_OVER = re.compile(
+    r"\b(event|party|it|we|lunch|dinner|meeting)('s| is| are| has| was)?\s*(just\s+)?(over|done|ended|finished|wrapped)\b"
+    r"|\b(just ended|got the (food|things|order|catering)|food (came|arrived|was delivered)|leftovers?)\b", re.I)
+LEFTOVER_CHOICES = {
+    "amount": ("none", "little", "tray", "several"),
+    "food_type": ("hot", "cold", "packaged", "produce"),
+    "kept_safe": ("yes", "no", "unsure"),
+    "handoff": ("dropoff", "pickup"),
+}
+LEFTOVER_WORDS = {  # prose fallback (ASI:One's planner narrates form replies), first match wins
+    "amount": [("none", r"\b(none|no leftovers|nothing (was )?left|all (got )?eaten)\b"),
+               ("several", r"\b(several|multiple|many|lots|\d+\s+trays)\b"), ("tray", r"\btray\b"),
+               ("little", r"\b(a little|a few|a bit|some)\b")],
+    "food_type": [("packaged", r"\b(packaged|sealed|chips|bottled|snacks?)\b"),
+                  ("produce", r"\b(produce|fruits?|vegetables|veggies)\b"),
+                  ("cold", r"\b(cold|salads?|sandwich(es)?|wraps?)\b"), ("hot", r"\b(hot|warm|cooked)\b")],
+    "kept_safe": [("unsure", r"\b(not sure|unsure)\b"), ("no", r"\b(sat out|left out|no)\b"),
+                  ("yes", r"\b(yes|kept (it )?(hot|cold|warm)|fridge|refrigerated|cooler|chafing)\b")],
+    "handoff": [("pickup", r"\bpick(\s|-)?up\b"), ("dropoff", r"\b(drop(\s|-)?off|drop it|bring it)\b")],
+}
+
+
+def event_booked(s: dict) -> EventBooked:
+    b, cl, loc = s["booking"], s["checklist"], s.get("location", {})
+    return EventBooked(
+        rfq_id=s["rfq_id"], vendor_id=b["vendor_id"], vendor_name=s["quotes"][b["vendor_id"]]["vendor_name"],
+        event_date=cl["date"]["value"], event_time=cl["time"]["value"] or "",
+        location=loc.get("resolved") or cl["location"]["value"], lat=loc.get("lat"), lng=loc.get("lng"),
+        headcount=cl["headcount"]["value"], trace=s["trace"])
+
+
+def parse_leftovers(sel: dict, text: str) -> dict:
+    found = {f: str(sel.get(f) or "").strip().lower() for f in LEFTOVER_CHOICES}
+    for f, choices in LEFTOVER_CHOICES.items():
+        if found[f] not in choices:
+            found[f] = next((v for v, pattern in LEFTOVER_WORDS[f] if re.search(pattern, text, re.I)), "")
+    rating = str(sel.get("rating") or "").strip()
+    m = re.fullmatch(r"([1-5])", rating) or re.search(r"\b([1-5])\s*(stars?|★|/\s*5)", text)
+    found["rating"] = int(m.group(1)) if m else min(rating.count("★") or text.count("★"), 5)
+    found["notes"] = str(sel.get("notes") or "")[:300]
+    return found
+
+
+def vendor_name_of(s: dict) -> str:
+    return s["quotes"][s["booking"]["vendor_id"]]["vendor_name"]
+
+
+async def show_leftovers_form(ctx: Context, user: str, s: dict, narration: str) -> None:
+    s["stage"] = "event_over"
+    await ctx.send(user, card_message(narration, "form", leftovers_form(s["rfq_id"], vendor_name_of(s))))
+
+
+async def after_booking(ctx: Context, user: str, s: dict, action: str | None, sel: dict, text: str) -> None:
+    if action in ("pick_quote", "back", "book", "request_quote", "confirm", "cancel", "negotiate") and s.get("quotes"):
+        await quote_action(ctx, user, s, action, sel, text)  # booking_action refuses a second booking
+        return
+    if action == "select_rescue" or (s["stage"] == "rescue_options" and not action):
+        await choose_rescue(ctx, user, s, sel, text)
+        return
+    if action == "submit_leftovers" or (s["stage"] == "event_over" and not action and parse_leftovers({}, text)["amount"]):
+        await submit_leftovers(ctx, user, s, sel, text)
+        return
+    if s["stage"] == "booked" and EVENT_OVER.search(text):
+        await ctx.send(FOLLOWUP_ADDRESS, event_booked(s))  # idempotent: in case Follow-up missed it
+        await ctx.send(FOLLOWUP_ADDRESS, EventEnded(rfq_id=s["rfq_id"], trace=s["trace"]))
+        ctx.logger.info(f"[{s['rfq_id']}] organizer says the event is over")
+        await show_leftovers_form(ctx, user, s, f"Glad you got everything from {vendor_name_of(s)}! "
+                                                 "Any leftovers? Tell me below and I'll find a food bank or pantry nearby.")
+        return
+    name, when = vendor_name_of(s), summary(s["checklist"]).split(" · ")[0]
+    await ctx.send(user, text_message({
+        "booked": f"You're booked with {name} for {when}. Tell me \"event over\" when it's done and I'll help with "
+                  "leftovers, or say \"start over\" to plan another event.",
+        "event_over": "Fill in the leftovers form above (or tell me, e.g. \"a tray of hot food, kept warm, I can drop it off\").",
+        "rescue_options": "Tap Choose on one of the places above.",
+        "done": f"Your event with {name} is wrapped up. Say \"start over\" to plan another one.",
+    }[s["stage"]]))
+
+
+async def submit_leftovers(ctx: Context, user: str, s: dict, sel: dict, text: str) -> None:
+    r = parse_leftovers(sel, text)
+    if not r["amount"]:
+        await show_leftovers_form(ctx, user, s, "How much food is left? Pick an option below.")
+        return
+    if r["amount"] != "none":
+        missing = [label for f, label in (("food_type", "what kind of food it is"),
+                                          ("kept_safe", "whether it was kept hot or cold")) if not r[f]]
+        if r["food_type"] == "packaged" and not r["kept_safe"]:
+            missing = [m for m in missing if "hot or cold" not in m]
+        if missing:
+            await show_leftovers_form(ctx, user, s, f"I also need {' and '.join(missing)}.")
+            return
+    r["handoff"] = r["handoff"] or "dropoff"
+    s["leftovers"] = r
+    await ctx.send(FOLLOWUP_ADDRESS, LeftoverReport(rfq_id=s["rfq_id"], trace=s["trace"], **r))
+    ctx.logger.info(f"[{s['rfq_id']}] leftovers -> Follow-up: {r}")
+    thanks = f"Thanks for rating {vendor_name_of(s)} {'★' * r['rating']}. " if r["rating"] else ""
+    await ctx.send(user, text_message(thanks + ("Wrapping up..." if r["amount"] == "none"
+                                                else "Finding a food rescue partner nearby...")))
+
+
+async def choose_rescue(ctx: Context, user: str, s: dict, sel: dict, text: str) -> None:
+    options = s.get("rescue_options") or []
+    org = next((o for o in options if o["org_id"] == sel.get("vendor_id")), None) or next(
+        (o for o in options if o["org_id"] in text or o["name"].lower() in text.lower()), None)
+    if not org:
+        await ctx.send(user, text_message("Tap Choose on one of the places above."))
+        return
+    if s.get("rescue_chosen"):  # idempotent: one rescue request per event
+        await ctx.send(user, text_message(f"I've already sent the request to {s['rescue_chosen']}."))
+        return
+    s["rescue_chosen"] = org["name"]
+    await ctx.send(FOLLOWUP_ADDRESS, RescueRequest(rfq_id=s["rfq_id"], org_id=org["org_id"], trace=s["trace"]))
+    await ctx.send(user, text_message(f"Contacting {org['name']}..."))
+
+
+@followup.on_message(FollowupPrompt)
+async def on_followup_prompt(ctx: Context, sender: str, p: FollowupPrompt):
+    if sender != FOLLOWUP_ADDRESS:
+        ctx.logger.warning(f"Ignoring FollowupPrompt from unknown sender {sender}")
+        return
+    user, s = _session_for(ctx, p.rfq_id)
+    if not s or s.get("stage") not in AFTER_BOOKING:
+        return
+    if p.kind == "checkin":
+        if s["stage"] == "booked":  # not if the organizer already told us it's over
+            await show_leftovers_form(ctx, user, s, p.text)
+            ctx.storage.set(user, s)
+    else:
+        await ctx.send(user, text_message(p.text))
+
+
+@followup.on_message(RescueOptions)
+async def on_rescue_options(ctx: Context, sender: str, r: RescueOptions):
+    if sender != FOLLOWUP_ADDRESS:
+        return
+    user, s = _session_for(ctx, r.rfq_id)
+    if not s or s.get("stage") != "event_over":
+        return
+    if r.options:
+        s["stage"], s["rescue_options"] = "rescue_options", [json.loads(o.json()) for o in r.options]
+        ctx.storage.set(user, s)
+        n = len(r.options)
+        await ctx.send(user, card_message(
+            f"About {r.est_lbs:.0f} lb of food, roughly {r.est_meals} meals (estimate). {n} place{'s' if n != 1 else ''} "
+            "nearby can take it, nearest first. Tap Choose and I'll send them the details.",
+            "carousel", rescue_carousel(r.rfq_id, "Food rescue near your event", s["rescue_options"])))
+        return
+    s["stage"] = "done"
+    ctx.storage.set(user, s)
+    await ctx.send(user, card_message(
+        r.advice, "custom",
+        info_card("Event wrapped up", vendor_name_of(s), [("Leftovers", r.advice)]
+                  + ([("Your rating", "★" * s["leftovers"]["rating"])] if s.get("leftovers", {}).get("rating") else []),
+                  [("Event over", "success")]),
+        terminal=True))
+
+
+@followup.on_message(RescueConfirmed)
+async def on_rescue_confirmed(ctx: Context, sender: str, c: RescueConfirmed):
+    if sender != FOLLOWUP_ADDRESS:
+        return
+    user, s = _session_for(ctx, c.rfq_id)
+    if not s or s.get("stage") not in ("rescue_options", "done"):
+        return
+    if not c.org_name:
+        s.pop("rescue_chosen", None)
+        ctx.storage.set(user, s)
+        await ctx.send(user, text_message(f"That didn't go through ({c.detail}). Tap Choose again."))
+        return
+    s["stage"] = "done"
+    ctx.storage.set(user, s)
+    how = "They'll arrange a pickup" if c.handoff == "pickup" else "Drop it off"
+    rows = [("Handoff", how), ("Address", c.address), ("Directions", c.directions_url)]
+    rows += [("Phone", c.phone)] if c.phone else []
+    rows += [("Hours", c.detail)] if c.detail else []
+    rows += [("Impact", f"about {c.est_lbs:.0f} lb, ~{c.est_meals} meals (estimate)"),
+             ("Request", "emailed (to the team inbox during testing)" if c.email_sent else "not emailed: call them")]
+    await ctx.send(user, card_message(
+        f"Food rescue set with {c.org_name}. {how}: {c.address}. [Directions]({c.directions_url})\n\n"
+        f"That's roughly {c.est_meals} meals that won't go to waste. Thanks for using Haggle!",
+        "custom",
+        info_card("Food rescue set", c.org_name, rows, [("Event over", "success"), (f"~{c.est_meals} meals saved", "success")]),
+        terminal=True))
 
 
 @negotiation.on_message(NegotiationResult)
@@ -1312,6 +1524,7 @@ agent.include(discovery)
 agent.include(negotiation)
 agent.include(onboarding)
 agent.include(booker)
+agent.include(followup)
 agent.include(build_payment_proto(on_commit, on_reject), publish_manifest=True)
 
 if __name__ == "__main__":
