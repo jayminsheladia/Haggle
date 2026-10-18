@@ -28,7 +28,7 @@ from uagents_core.contrib.protocols.payment import CancelPayment, CommitPayment,
 from integrations.stripe_client import charge_test_deposit, create_deposit_checkout, mock_payments, session_status
 from shared import observability
 from shared.cards import (
-    DIETS, card_message, event_form, picker_slider, quote_detail, quotes_carousel, review_card, text_message, usd,
+    DIETS, card_message, event_form, picker_carousel, quote_detail, quotes_carousel, review_card, text_message, usd,
 )
 from shared.llm import chat_json
 from shared.models import (
@@ -366,6 +366,10 @@ async def _on_chat(ctx: Context, sender: str, msg: ChatMessage):
         await ctx.send(sender, text_message("That card is from an earlier request. Here's where we are now."))
         await show_current(ctx, sender, s)
         return
+    if action == "toggle_vendor" and s.get("vendors"):
+        await toggle_vendor(ctx, sender, s, sel, text)
+        ctx.storage.set(sender, s)
+        return
     if action in ("select_vendors", "select_all") and s.get("vendors"):
         await pick_vendors(ctx, sender, s, sel, text)
         ctx.storage.set(sender, s)
@@ -401,7 +405,7 @@ async def _on_chat(ctx: Context, sender: str, msg: ChatMessage):
             s["version"] += 1  # the request changed: old quotes must not be mixed with new ones
         s["searched_fp"] = fingerprint(checklist)
         for k in ("vendors", "quotes", "ranked", "fits", "declined", "list_prices", "shortlist", "countering",
-                  "negolog"):
+                  "picked", "negolog"):
             s.pop(k, None)
         s["stage"] = "discovering"
         s["asked"] = []
@@ -493,14 +497,36 @@ async def send_picker(ctx: Context, user: str, s: dict) -> None:
     note = (f"{connected} {'are' if connected != 1 else 'is'} connected to Haggle and can negotiate; for the others "
             "I'll use their public menus." if connected else "I'll get estimates from their public menus.")
     await ctx.send(user, card_message(
-        f"I found {len(vendors)} caterers near {loc}. {note} Tick Select on each one you want, then tap Get quotes.",
-        "custom",
-        picker_slider(
+        f"I found {len(vendors)} caterers near {loc}. {note} Swipe through, tap Select on each one you want, "
+        "then swipe to the end and tap Get quotes.",
+        "carousel",
+        picker_carousel(
             s["rfq_id"], loc,
             [{"vendor_id": v["vendor_id"], "name": v["display_name"], "photo_url": v["photo_url"],
               "meta": v["meta"], "connected": v.get("claimed", False)} for v in vendors],
         ),
     ))
+
+
+async def toggle_vendor(ctx: Context, user: str, s: dict, sel: dict, text: str) -> None:
+    """Add or remove one caterer. Answer in one line and don't re-send the carousel: the user keeps using it."""
+    names = {v["vendor_id"]: v["display_name"] for v in s["vendors"]}
+    vid = sel.get("vendor_id") if sel.get("vendor_id") in names else next(
+        (k for k, n in names.items() if n.lower() in text.lower()), None)
+    picked = s.setdefault("picked", [])
+    if vid is None:
+        await ctx.send(user, text_message("Tap Select on a caterer card."))
+        return
+    if vid in picked:
+        picked.remove(vid)
+        verb = "Removed"
+    else:
+        picked.append(vid)
+        verb = "Added"
+    chosen = ", ".join(names[x] for x in picked) or "none yet"
+    await ctx.send(user, text_message(
+        f"{verb} {names[vid]}. Selected ({len(picked)}): {chosen}. "
+        "Keep selecting, or swipe to the last card and tap Get quotes."))
 
 
 @discovery.on_message(DiscoveryResult)
@@ -591,7 +617,7 @@ async def pick_vendors(ctx: Context, user: str, s: dict, sel: dict, text: str) -
                 picks = [x.strip() for x in picks.split(",")]
         picks = set(picks if isinstance(picks, list) else [picks])
         idx = [i for i, v in enumerate(vendors) if v["vendor_id"] in picks]
-        idx = idx or [i for i in range(len(vendors)) if _truthy(sel.get(f"pick_{i}"))]  # the Select checkboxes
+        idx = idx or [i for i, v in enumerate(vendors) if v["vendor_id"] in s.get("picked", [])]
         if not idx:  # planner prose: "picked pick_0 and pick_3" or caterer names
             idx = sorted({int(m) for m in re.findall(r"\bpick_(\d+)\b", text) if int(m) < len(vendors)}
                          | {i for i, v in enumerate(vendors) if v["display_name"].lower() in text.lower()})

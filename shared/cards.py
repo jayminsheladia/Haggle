@@ -211,42 +211,39 @@ def review_card(rfq_id: str, vendor_id: str, title: str, rows: list[tuple[str, s
     }
 
 
-def picker_slider(rfq_id: str, location: str, vendors: list[dict]) -> dict:
-    """Caterer picker in ONE card: a horizontal row of caterer cards (swipe through them), each with a "Select"
-    checkbox the drawer keeps, then "Get quotes" sends every pick at once. Nothing is re-sent while picking.
+def picker_carousel(rfq_id: str, location: str, vendors: list[dict]) -> dict:
+    """Caterer picker as ASI:One's horizontal carousel (the one card kind that slides sideways). Each card's
+    "Select" adds or removes that caterer; the Concierge answers with one short line and does NOT re-send the
+    carousel, so the user keeps swiping and selecting on this same card. The last card is "Get quotes".
 
-    vendors: [{"vendor_id", "name", "photo_url", "meta", "connected"}]; checkbox i is named pick_<i>.
+    vendors: [{"vendor_id", "name", "photo_url", "meta", "connected"}]
     """
-    def card(i: int, v: dict) -> dict:
-        status = ({"type": "badge", "label": "Connected", "variant": "success"} if v["connected"]
-                  else {"type": "badge", "label": "Not connected", "variant": "warning"})
-        return {
-            "type": "section",
-            "title": v["name"],
-            "children": [
-                *([{"type": "image", "src": v["photo_url"], "alt": v["name"], "aspect_ratio": "4:3"}]
-                  if v["photo_url"] else []),
-                *([{"type": "text", "value": v["meta"], "style": "muted"}] if v["meta"] else []),
-                status,
-                {"type": "input", "name": f"pick_{i}", "kind": "checkbox", "label": "Select"},
-            ],
-        }
+    def sel(action: str, vendor_id: str = "") -> dict:
+        return {"action": action, "rfq_id": rfq_id, "vendor_id": vendor_id}
 
-    def button(text: str, action: str, primary: bool = False) -> dict:
-        return {"type": "button", "label": text, "primary": primary,
-                "action": {"selection": {"action": action, "rfq_id": rfq_id, "vendor_id": ""}}}
-
-    return {
-        "root": {
-            "type": "section",
-            "title": f"Caterers near {location}",
-            "subtitle": "Swipe through and tick every caterer you want quotes from, then Get quotes.",
-            "children": [
-                {"type": "group", "direction": "row", "gap": 12, "children": [card(i, v) for i, v in enumerate(vendors)]},
-                {"type": "group", "direction": "row", "gap": 8, "children": [
-                    button("Get quotes", "select_vendors", primary=True),
-                    button("Quote all", "select_all"),
-                ]},
-            ],
-        }
-    }
+    items = [{
+        "id": v["vendor_id"],
+        **({"image": v["photo_url"]} if v["photo_url"] else {}),
+        "title": v["name"],
+        "subtitle": v["meta"] or "Los Angeles caterer",
+        "badges": [{"label": "Connected", "variant": "success"} if v["connected"]
+                   else {"label": "Not connected", "variant": "warning"}],
+        "secondary_text": "Tap Select to add or remove",
+        "primary_cta": {"label": "Select", "selection": sel("toggle_vendor", v["vendor_id"])},
+    } for v in vendors]
+    items.append({
+        "id": "get_quotes",
+        "title": "Get quotes",
+        "subtitle": "From every caterer you selected",
+        "secondary_text": "Nobody is contacted until you tap this",
+        "primary_cta": {"label": "Get quotes", "selection": sel("select_vendors")},
+    })
+    items.append({
+        "id": "quote_all",
+        "title": "Quote all",
+        "subtitle": f"All {len(vendors)} caterers",
+        "secondary_text": "Quick option",
+        "primary_cta": {"label": "Quote all", "selection": sel("select_all")},
+    })
+    return {"title": f"Caterers near {location}", "subtitle": "Swipe, tap Select on each one you want, then Get quotes",
+            "items": items}
