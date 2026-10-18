@@ -1,8 +1,10 @@
 """Create + verify Stripe Checkout Sessions.
 
-Adapted from Fetch's stripe-horoscope-agent: an embedded Checkout Session whose details go into the
-Payment Protocol's RequestPayment metadata["stripe"]; ASI:One renders the checkout in the chat and
-CommitPayment comes back with the session id as transaction_id.
+Adapted from Fetch's stripe-horoscope-agent: a Checkout Session whose details go into the Payment Protocol's
+RequestPayment metadata["stripe"]; CommitPayment comes back with the session id as transaction_id.
+STRIPE_CHECKOUT_UI=hosted (default): a Stripe-hosted checkout page (checkout.stripe.com) the chat links to, since
+plain ASI:One chat often doesn't render the embedded one; the Concierge also polls the session, so a payment made
+on that page books even if no CommitPayment arrives. STRIPE_CHECKOUT_UI=embedded: Fetch's embedded checkout.
 
 The amount is always computed in code by the caller; this module never decides a price. The secret
 key never leaves this module (only the publishable key goes into metadata).
@@ -51,13 +53,15 @@ def create_deposit_checkout(*, rfq_id: str, vendor_id: str, vendor_name: str, am
     cents = to_cents(amount_usd)
     if cents < 50:  # Stripe's minimum charge in USD
         raise ValueError(f"deposit ${amount_usd:.2f} is below Stripe's $0.50 minimum")
-    return_url = (os.getenv("STRIPE_SUCCESS_URL", "https://asi1.ai")
-                  + f"?session_id={{CHECKOUT_SESSION_ID}}&rfq_id={rfq_id}")
+    back = os.getenv("STRIPE_SUCCESS_URL", "https://asi1.ai")
+    return_url = back + f"?session_id={{CHECKOUT_SESSION_ID}}&rfq_id={rfq_id}"
+    hosted = os.getenv("STRIPE_CHECKOUT_UI", "hosted") != "embedded"
+    ui = ({"success_url": return_url, "cancel_url": back} if hosted else
+          # Stripe's current name for "embedded"; metadata below keeps ASI:One's "embedded"
+          {"ui_mode": "embedded_page", "redirect_on_completion": "if_required", "return_url": return_url})
     session = s.checkout.Session.create(
-        ui_mode="embedded_page",  # Stripe's current name for "embedded"; metadata below keeps ASI:One's "embedded"
-        redirect_on_completion="if_required",  # payment methods come from the Stripe Dashboard settings
+        **ui,
         mode="payment",
-        return_url=return_url,
         expires_at=int(time.time()) + EXPIRES_S,
         client_reference_id=rfq_id,
         line_items=[{
@@ -72,15 +76,18 @@ def create_deposit_checkout(*, rfq_id: str, vendor_id: str, vendor_name: str, am
         metadata={"rfq_id": rfq_id, "vendor_id": vendor_id, "user_address": user_address,
                   "session_id": chat_session_id, "service": "haggle_deposit"},
     )
-    return {
-        "client_secret": session.client_secret,
+    details = {
+        "client_secret": session.client_secret,  # embedded only: a hosted page has none
         "id": session.id,  # some UIs read `id`, others `checkout_session_id`
         "checkout_session_id": session.id,
         "publishable_key": os.getenv("STRIPE_PUBLISHABLE_KEY", ""),
         "currency": CURRENCY,
         "amount_cents": cents,
-        "ui_mode": "embedded",
+        "ui_mode": "hosted" if hosted else "embedded",
+        "url": session.url if hosted else None,
     }
+    # RequestPayment metadata values must all be strings: drop the empty ones, stringify the rest.
+    return {k: str(v) for k, v in details.items() if v is not None}
 
 
 def mock_payments() -> bool:

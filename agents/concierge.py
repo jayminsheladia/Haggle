@@ -7,6 +7,7 @@ Owner: Person A
 
 import asyncio
 import json
+import logging
 import os
 import re
 import time
@@ -42,6 +43,7 @@ from shared.payment import build_payment_proto, deposit_request
 from shared.selection import parse_selection
 
 load_dotenv()
+logging.getLogger("stripe").setLevel(logging.WARNING)  # the checkout watcher asks Stripe every 5 s
 
 LA = ZoneInfo("America/Los_Angeles")
 
@@ -1058,9 +1060,17 @@ async def request_deposit(ctx: Context, user: str, s: dict, q: dict, when: str) 
     ctx.storage.set("awaiting_payment", sorted(set(ctx.storage.get("awaiting_payment") or []) | {user}))
     await ctx.send(user, deposit_request(ctx, s["rfq_id"], b["deposit_usd"], checkout,
                                          f"{usd(b['deposit_usd'])} deposit to book {q['vendor_name']} for {when}"))
-    await ctx.send(user, text_message(
-        f"Pay the {usd(b['deposit_usd'])} deposit above to book {q['vendor_name']} for {when}. "
-        "I'll confirm with the caterer as soon as it goes through."))
+    if checkout.get("url"):  # Stripe-hosted checkout page: link it, with the test card to use
+        await ctx.send(user, text_message(
+            f"**Pay the {usd(b['deposit_usd'])} deposit on Stripe to book {q['vendor_name']} for {when}:**\n\n"
+            f"👉 [Open secure Stripe checkout]({checkout['url']})\n\n"
+            "Stripe test mode, so no real money: card **4242 4242 4242 4242**, any future date (e.g. **12/34**), "
+            "any CVC (e.g. **123**), any ZIP (e.g. **90024**).\n\n"
+            "I'll confirm with the caterer as soon as Stripe shows the payment, then come back to this chat."))
+    else:
+        await ctx.send(user, text_message(
+            f"Pay the {usd(b['deposit_usd'])} deposit above to book {q['vendor_name']} for {when}. "
+            "I'll confirm with the caterer as soon as it goes through."))
     ctx.logger.info(f"[{s['rfq_id']}] RequestPayment {usd(b['deposit_usd'])} ({checkout['checkout_session_id']})")
 
 
@@ -1158,6 +1168,30 @@ async def on_quote_request_sent(ctx: Context, sender: str, r: QuoteRequestSent):
     else:
         await ctx.send(user, text_message(f"I couldn't send the request to {name} just now ({r.detail}). "
                                           "Tap Send email again in a minute."))
+
+
+@agent.on_interval(period=5)
+async def watch_checkouts(ctx: Context):
+    """A deposit paid on the Stripe-hosted page books even if ASI:One never sends CommitPayment: when Stripe says the
+    session is complete, hand it to the Booker exactly as on_commit does (idempotent: once per session)."""
+    for user in ctx.storage.get("awaiting_payment") or []:
+        s = ctx.storage.get(user)
+        b = (s or {}).get("booking") or {}
+        txn = b.get("checkout", {}).get("checkout_session_id")
+        if not txn or b.get("mock") or b.get("committed") or b.get("paid") or not b.get("requested_at"):
+            continue
+        try:
+            status = await asyncio.to_thread(session_status, txn)
+        except Exception as e:
+            ctx.logger.warning(f"[{s['rfq_id']}] Stripe status check failed: {e}")
+            continue
+        if status == "complete":
+            b["committed"] = txn
+            ctx.storage.set(user, s)
+            ctx.logger.info(f"[{s['rfq_id']}] Stripe checkout {txn} paid -> Booker")
+            await ctx.send(BOOKER_ADDRESS, booking_message(s, user))
+            await ctx.send(user, text_message(f"Payment received on Stripe ✅ Confirming with "
+                                              f"{s['quotes'][b['vendor_id']]['vendor_name']}..."))
 
 
 @agent.on_interval(period=60)
