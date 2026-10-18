@@ -174,6 +174,7 @@ Return ONLY a JSON object with exactly these keys. Each key is either null or
 Rules:
 - Use null for anything the user did not mention. Never guess. Never assume "none" for dietary or allergies.
 - "source" is "stated" when the user said it directly, "inferred" when you derived it (e.g. "dinner" -> 18:00).
+  Resolving a weekday name or "tomorrow" to a date counts as "stated".
 """
 STRICT_SUFFIX = "\nYour previous reply was not valid JSON. Reply with the JSON object only: no prose, no code fences."
 
