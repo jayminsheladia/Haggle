@@ -25,7 +25,7 @@ from uagents_core.contrib.protocols.chat import (
 )
 from uagents_core.contrib.protocols.payment import CancelPayment, CommitPayment, CompletePayment, RejectPayment
 
-from integrations.stripe_client import create_deposit_checkout, session_status
+from integrations.stripe_client import charge_test_deposit, create_deposit_checkout, mock_payments, session_status
 from shared import observability
 from shared.cards import (
     DIETS, card_message, event_form, picker_slider, quote_detail, quotes_carousel, review_card, text_message, usd,
@@ -33,7 +33,8 @@ from shared.cards import (
 from shared.llm import chat_json
 from shared.models import (
     RFQ, BookingConfirmed, BookingResult, CounterRequest, CounterResult, DiscoveryRequest, DiscoveryResult,
-    NegotiationRequest, NegotiationResult, OnboardRequest, OnboardResult, Quote, VendorRef,
+    NegotiationRequest, NegotiationResult, OnboardRequest, OnboardResult, Quote, QuoteRequest, QuoteRequestSent,
+    VendorRef,
 )
 from shared.menu_schema import slugify
 from shared.payment import build_payment_proto, deposit_request
@@ -50,7 +51,7 @@ NEGOTIATOR_ADDRESS = os.getenv(
     "NEGOTIATOR_ADDRESS", "agent1qg68ah5xmm3t9lcecua0dvqqknkqhqv4scrpf3cjjhx64lrqkpvd7erglhl"
 )
 FACTORY_ADDRESS = os.getenv("FACTORY_ADDRESS", "agent1qdzh8nw69qe2x0rw3tc7rg8ddt9e6lda8x7y6hqfjwfaldk2k7kzukj7rh5")
-BOOKER_ADDRESS = os.getenv("BOOKER_ADDRESS", "agent1qwa94yx3t92peup9ffkaxzzc4encnf5h5kuju4ent2nvp379mn96qc30fn2")
+BOOKER_ADDRESS = os.getenv("BOOKER_ADDRESS", "agent1qfq9dyy5q5t5dg7tzuhkuqztzqy9q806dw4qd8v6sg6znu87rmx8s3deu0f")
 ONBOARD_TIMEOUT_S = 75  # the Factory reads menus in parallel; usually well under a minute
 DEPOSIT_PCT = 0.20  # deposit taken at booking (build plan)
 NO_PRICES = "no public menu prices"
@@ -953,9 +954,7 @@ async def booking_action(ctx: Context, user: str, s: dict, action: str, vid: str
     if booking["kind"] == "book":
         await request_deposit(ctx, user, s, q, when)
     else:
-        await ctx.send(user, text_message(
-            f"Saved: I'll ask {q['vendor_name']} for a confirmed quote. Sending the email isn't connected yet, "
-            "so nothing has gone out; the request is saved and ready."))
+        await request_quote(ctx, user, s, vid)
 
 
 # ---- Deposit: Payment Protocol (seller) -> Booker ---------------------------
@@ -978,6 +977,9 @@ async def request_deposit(ctx: Context, user: str, s: dict, q: dict, when: str) 
     """Send RequestPayment for the deposit. Reuses an open Checkout Session and never creates a second one
     once a session is paid, so tapping "Pay" twice can't charge twice."""
     b = s["booking"]
+    if mock_payments():
+        await mock_deposit(ctx, user, s, q, when)
+        return
     checkout = b.get("checkout")
     if checkout:
         try:
@@ -1007,12 +1009,38 @@ async def request_deposit(ctx: Context, user: str, s: dict, q: dict, when: str) 
             return
         b["checkout"] = checkout
     s["stage"] = "awaiting_payment"
+    b["requested_at"] = datetime.now(timezone.utc).isoformat()
+    ctx.storage.set("awaiting_payment", sorted(set(ctx.storage.get("awaiting_payment") or []) | {user}))
     await ctx.send(user, deposit_request(ctx, s["rfq_id"], b["deposit_usd"], checkout,
                                          f"{usd(b['deposit_usd'])} deposit to book {q['vendor_name']} for {when}"))
     await ctx.send(user, text_message(
         f"Pay the {usd(b['deposit_usd'])} deposit above to book {q['vendor_name']} for {when}. "
         "I'll confirm with the caterer as soon as it goes through."))
     ctx.logger.info(f"[{s['rfq_id']}] RequestPayment {usd(b['deposit_usd'])} ({checkout['checkout_session_id']})")
+
+
+async def mock_deposit(ctx: Context, user: str, s: dict, q: dict, when: str) -> None:
+    """STRIPE_MOCK_PAYMENTS=1: charge the deposit on Stripe's test card (real test-mode charge, no checkout UI),
+    then hand the booking to the Booker exactly as a CommitPayment would."""
+    b = s["booking"]
+    try:
+        intent = await asyncio.to_thread(
+            charge_test_deposit, rfq_id=s["rfq_id"], vendor_id=b["vendor_id"], vendor_name=q["vendor_name"],
+            amount_usd=b["deposit_usd"], user_address=user,
+            description=f"{DEPOSIT_PCT:.0%} deposit, {when}, {q['vendor_name']}")
+    except Exception:
+        ctx.logger.exception(f"[{s['rfq_id']}] Stripe test charge failed")
+        await ctx.send(user, text_message("I couldn't take the test deposit on Stripe just now, so nothing was "
+                                          "charged. Tap Book again in a minute."))
+        return
+    b["checkout"], b["committed"], b["mock"] = {"checkout_session_id": intent}, intent, True
+    s["stage"] = "awaiting_payment"
+    ctx.storage.set(user, s)
+    ctx.logger.info(f"[{s['rfq_id']}] mock deposit {usd(b['deposit_usd'])} charged on Stripe test mode ({intent})")
+    await ctx.send(BOOKER_ADDRESS, booking_message(s, user))
+    await ctx.send(user, text_message(
+        f"Test deposit of {usd(b['deposit_usd'])} charged through Stripe (test mode, Stripe's test card; "
+        f"payment {intent}). Confirming with {q['vendor_name']}..."))
 
 
 async def on_commit(ctx: Context, sender: str, msg: CommitPayment):
@@ -1049,6 +1077,64 @@ async def on_reject(ctx: Context, sender: str, msg: RejectPayment):
 booker = Protocol(name="HaggleBookerClient", version="0.1.0")
 
 
+async def request_quote(ctx: Context, user: str, s: dict, vid: str) -> None:
+    """Ask the Booker to email an unclaimed caterer for a confirmed quote (once per caterer and request)."""
+    q, cl, v = s["quotes"][vid], s["checklist"], _vendor(s, vid)
+    sent = s.setdefault("quote_requests", {})
+    if vid in sent:
+        await ctx.send(user, text_message(f"I've already asked {q['vendor_name']} for a quote ({sent[vid]})."))
+        return
+    ctx.storage.set(f"rfq:{s['rfq_id']}", user)
+    await ctx.send(BOOKER_ADDRESS, QuoteRequest(
+        rfq_id=s["rfq_id"], vendor_id=vid, vendor_name=q["vendor_name"], vendor_address=v.get("agent_address", ""),
+        vendor_phone=v.get("phone", ""), event_date=cl["date"]["value"], event_time=cl["time"]["value"],
+        location=s.get("location", {}).get("resolved") or cl["location"]["value"], headcount=cl["headcount"]["value"],
+        dietary_summary=display("dietary", cl["dietary"]["value"]) + "; " + display("allergies", cl["allergies"]["value"]),
+        budget_usd=cl["budget_usd"]["value"] or 0.0, estimate_usd=0.0 if on_request(q) else q["total_usd"],
+        trace=s["trace"]))
+    await ctx.send(user, text_message(f"Asking {q['vendor_name']} for a confirmed quote..."))
+
+
+@booker.on_message(QuoteRequestSent)
+async def on_quote_request_sent(ctx: Context, sender: str, r: QuoteRequestSent):
+    if sender != BOOKER_ADDRESS:
+        ctx.logger.warning(f"Ignoring QuoteRequestSent from unknown sender {sender}")
+        return
+    user, s = _session_for(ctx, r.rfq_id)
+    if not s or r.vendor_id not in s.get("quotes", {}):
+        return
+    name = s["quotes"][r.vendor_id]["vendor_name"]
+    if r.sent:
+        s.setdefault("quote_requests", {})[r.vendor_id] = f"sent, reply by {r.reply_by}"
+        ctx.storage.set(user, s)
+        await ctx.send(user, text_message(
+            f"Request sent to {name}. They have until {r.reply_by} to reply; I'll tell you when they do. "
+            "(During testing the email goes to the team inbox.) You can still book a connected caterer meanwhile."))
+    else:
+        await ctx.send(user, text_message(f"I couldn't send the request to {name} just now ({r.detail}). "
+                                          "Tap Send request again in a minute."))
+
+
+@agent.on_interval(period=60)
+async def expire_payment_requests(ctx: Context):
+    """CancelPayment when a deposit request has waited longer than its deadline without a CommitPayment."""
+    from shared.payment import DEADLINE_S
+    for user in ctx.storage.get("awaiting_payment") or []:
+        s = ctx.storage.get(user)
+        b = (s or {}).get("booking") or {}
+        if not b.get("requested_at") or b.get("committed") or b.get("paid"):
+            continue
+        if datetime.now(timezone.utc) - datetime.fromisoformat(b["requested_at"]) > timedelta(seconds=DEADLINE_S):
+            await ctx.send(user, CancelPayment(transaction_id=b["checkout"]["checkout_session_id"],
+                                               reason="The deposit wasn't paid in time."))
+            b.pop("requested_at", None)
+            ctx.storage.set(user, s)
+            await ctx.send(user, text_message("The deposit request expired, so nothing was charged. "
+                                              "Tap Book again whenever you're ready."))
+    ctx.storage.set("awaiting_payment", [u for u in (ctx.storage.get("awaiting_payment") or [])
+                                         if (ctx.storage.get(u) or {}).get("booking", {}).get("requested_at")])
+
+
 @booker.on_message(BookingResult)
 async def on_booking_result(ctx: Context, sender: str, result: BookingResult):
     if sender != BOOKER_ADDRESS:
@@ -1067,7 +1153,8 @@ async def on_booking_result(ctx: Context, sender: str, result: BookingResult):
     if result.status == "confirmed":
         b["paid"], s["stage"] = True, "booked"
         ctx.storage.set(user, s)
-        await ctx.send(user, CompletePayment(transaction_id=txn))
+        if not b.get("mock"):
+            await ctx.send(user, CompletePayment(transaction_id=txn))
         cl = s["checklist"]
         await ctx.send(user, text_message(
             f"You're booked! {name}, {summary(cl).split(' · ')[0]}, {display('headcount', cl['headcount']['value'])}. "
@@ -1076,7 +1163,8 @@ async def on_booking_result(ctx: Context, sender: str, result: BookingResult):
         return
 
     if result.status == "vendor_declined":
-        await ctx.send(user, CancelPayment(transaction_id=txn, reason=result.detail))
+        if not b.get("mock"):
+            await ctx.send(user, CancelPayment(transaction_id=txn, reason=result.detail))
         s.pop("booking", None)
         s["stage"] = "choosing"
         ctx.storage.set(user, s)
@@ -1087,7 +1175,8 @@ async def on_booking_result(ctx: Context, sender: str, result: BookingResult):
     b.pop("committed", None)
     ctx.storage.set(user, s)
     if result.status == "payment_failed":
-        await ctx.send(user, CancelPayment(transaction_id=txn, reason=result.detail))
+        if not b.get("mock"):
+            await ctx.send(user, CancelPayment(transaction_id=txn, reason=result.detail))
         await ctx.send(user, text_message(f"Stripe hasn't confirmed the deposit ({result.detail}). "
                                           "Finish the checkout, then tap the pay button again."))
     else:

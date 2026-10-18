@@ -9,15 +9,13 @@ Owner: Person D
 import logging
 import os
 
-import httpx
+from html import escape
 
 from integrations import photon
+from integrations.email import EmailError, send_email
 from shared.menu_schema import VendorMenu
 
 logger = logging.getLogger("notify")
-
-RESEND_URL = "https://api.resend.com/emails"
-RESEND_FROM = "Haggle <onboarding@resend.dev>"
 
 
 async def notify_owner(menu: VendorMenu, text: str, subject: str = "Haggle") -> str:
@@ -33,15 +31,11 @@ async def notify_owner(menu: VendorMenu, text: str, subject: str = "Haggle") -> 
         except Exception as e:
             logger.warning(f"[{menu.slug}] Photon failed, falling back: {e}")
 
-    key = os.getenv("RESEND_API_KEY")
-    if key and email:
+    if email and os.getenv("RESEND_API_KEY"):
         try:
-            async with httpx.AsyncClient(timeout=10) as client:
-                r = await client.post(RESEND_URL, headers={"Authorization": f"Bearer {key}"},
-                                      json={"from": RESEND_FROM, "to": [email], "subject": subject, "text": text})
-                r.raise_for_status()
+            await send_email(subject, f"<p>{escape(text)}</p>", text, to=email)
             return "email"
-        except httpx.HTTPError as e:
+        except EmailError as e:
             logger.warning(f"[{menu.slug}] email failed, falling back to log: {e}")
 
     logger.info(f"[{menu.slug}] OWNER MESSAGE (log only): {text}")

@@ -276,3 +276,33 @@ class BookingResult(Model):
     detail: str = ""
     email_sent: bool = False
     trace: str = ""
+
+
+class QuoteRequest(Model):
+    """Concierge -> Booker: email an UNCLAIMED caterer for a confirmed quote (with a claim link). Idempotent on
+    rfq_id + vendor_id. During development the email goes to the team inbox, never to the business."""
+    rfq_id: str
+    vendor_id: str
+    vendor_name: str
+    vendor_address: str = ""  # its Haggle vendor agent (the claim link points at it)
+    vendor_phone: str = ""
+    event_date: str = ""
+    event_time: str = ""
+    location: str = ""
+    headcount: int = 0
+    dietary_summary: str = ""
+    budget_usd: float = 0.0  # 0 = no fixed budget
+    estimate_usd: float = 0.0  # 0 = no public prices
+    trace: str = ""
+
+
+class QuoteRequestSent(Model):
+    """Booker -> Concierge."""
+    rfq_id: str
+    vendor_id: str
+    email_to: str = ""
+    sent_at: str = ""
+    reply_by: str = ""
+    sent: bool = False
+    detail: str = ""
+    trace: str = ""

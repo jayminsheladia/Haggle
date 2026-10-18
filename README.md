@@ -15,7 +15,7 @@ Haggle is a multi-agent group catering marketplace for Los Angeles, built on Fet
 | Discovery | `agents/discovery.py` | `agent1qvrfzf7mnxhz6zmzgn2q6htwjec6fs5rg0wnz6ucj4cjhqlaefwr6l26g2g` | [profile](https://agentverse.ai/agents/details/agent1qvrfzf7mnxhz6zmzgn2q6htwjec6fs5rg0wnz6ucj4cjhqlaefwr6l26g2g/profile) |
 | Vendor Agent Factory | `agents/factory.py` | `agent1qdzh8nw69qe2x0rw3tc7rg8ddt9e6lda8x7y6hqfjwfaldk2k7kzukj7rh5` | [profile](https://agentverse.ai/agents/details/agent1qdzh8nw69qe2x0rw3tc7rg8ddt9e6lda8x7y6hqfjwfaldk2k7kzukj7rh5/profile) |
 | Negotiator | `agents/negotiator.py` | `agent1qg68ah5xmm3t9lcecua0dvqqknkqhqv4scrpf3cjjhx64lrqkpvd7erglhl` | [profile](https://agentverse.ai/agents/details/agent1qg68ah5xmm3t9lcecua0dvqqknkqhqv4scrpf3cjjhx64lrqkpvd7erglhl/profile) |
-| Booker | `agents/booker.py` | `agent1qwa94yx3t92peup9ffkaxzzc4encnf5h5kuju4ent2nvp379mn96qc30fn2` | [profile](https://agentverse.ai/agents/details/agent1qwa94yx3t92peup9ffkaxzzc4encnf5h5kuju4ent2nvp379mn96qc30fn2/profile) |
+| Booker | `agents/booker.py` | `agent1qfq9dyy5q5t5dg7tzuhkuqztzqy9q806dw4qd8v6sg6znu87rmx8s3deu0f` | [profile](https://agentverse.ai/agents/details/agent1qfq9dyy5q5t5dg7tzuhkuqztzqy9q806dw4qd8v6sg6znu87rmx8s3deu0f/profile) |
 | Follow-up | `agents/followup.py` | _TBD_ | _TBD_ |
 
 ### Vendor agents
@@ -80,6 +80,7 @@ python -m vendors.vendor_host   # every vendor agent (REST on 8109, agents on 81
 python -m agents.factory        # Vendor Agent Factory, port 8004 (needs the vendor host)
 python -m agents.negotiator     # Negotiator, port 8003
 python -m agents.discovery      # Discovery, port 8002
+python -m agents.booker         # Booker, port 8005
 python -m agents.concierge      # @haggle, port 8001
 ```
 
@@ -93,7 +94,14 @@ Point the Concierge at the agents you run with `DISCOVERY_ADDRESS`, `NEGOTIATOR_
 
 To (re)read the caterers in `vendors/sources.csv` into `vendors/data/`: `python -m scripts.extract_all`.
 
-_TBD — the Booker and Follow-up agents._
+**Booking:** Book → review card → the Concierge sends a Payment Protocol `RequestPayment` (Stripe embedded checkout,
+test mode: card 4242 4242 4242 4242) → on `CommitPayment` the Booker verifies the payment with Stripe, sends `Accept` to
+the caterer (refunds if it declines), emails the confirmation with a calendar invite (.ics) and the order to the
+caterer, and texts the organizer via Photon when configured → `CompletePayment`. "Request a confirmed quote" on an
+unclaimed caterer makes the Booker email it a quote request with a link to claim its agent. During development every
+email goes to `TEAM_INBOX_EMAIL` and texts only to `TEAM_PHONE` / `OWNER_TEST_PHONE`.
+
+_TBD — the Follow-up agent._
 
 ## Deploy (always-on server)
 
