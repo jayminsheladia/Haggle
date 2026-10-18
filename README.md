@@ -15,7 +15,7 @@ Haggle is a multi-agent group catering marketplace for Los Angeles, built on Fet
 | Discovery | `agents/discovery.py` | `agent1qvrfzf7mnxhz6zmzgn2q6htwjec6fs5rg0wnz6ucj4cjhqlaefwr6l26g2g` | [profile](https://agentverse.ai/agents/details/agent1qvrfzf7mnxhz6zmzgn2q6htwjec6fs5rg0wnz6ucj4cjhqlaefwr6l26g2g/profile) |
 | Vendor Agent Factory | `agents/factory.py` | `agent1qdzh8nw69qe2x0rw3tc7rg8ddt9e6lda8x7y6hqfjwfaldk2k7kzukj7rh5` | [profile](https://agentverse.ai/agents/details/agent1qdzh8nw69qe2x0rw3tc7rg8ddt9e6lda8x7y6hqfjwfaldk2k7kzukj7rh5/profile) |
 | Negotiator | `agents/negotiator.py` | `agent1qg68ah5xmm3t9lcecua0dvqqknkqhqv4scrpf3cjjhx64lrqkpvd7erglhl` | [profile](https://agentverse.ai/agents/details/agent1qg68ah5xmm3t9lcecua0dvqqknkqhqv4scrpf3cjjhx64lrqkpvd7erglhl/profile) |
-| Booker | `agents/booker.py` | _TBD_ | _TBD_ |
+| Booker | `agents/booker.py` | `agent1qwa94yx3t92peup9ffkaxzzc4encnf5h5kuju4ent2nvp379mn96qc30fn2` | [profile](https://agentverse.ai/agents/details/agent1qwa94yx3t92peup9ffkaxzzc4encnf5h5kuju4ent2nvp379mn96qc30fn2/profile) |
 | Follow-up | `agents/followup.py` | _TBD_ | _TBD_ |
 
 ### Vendor agents

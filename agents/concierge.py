@@ -5,6 +5,7 @@ Run from the repo root:  python -m agents.concierge
 Owner: Person A
 """
 
+import asyncio
 import json
 import os
 import re
@@ -22,17 +23,20 @@ from uagents_core.contrib.protocols.chat import (
     TextContent,
     chat_protocol_spec,
 )
+from uagents_core.contrib.protocols.payment import CancelPayment, CommitPayment, CompletePayment, RejectPayment
 
+from integrations.stripe_client import create_deposit_checkout, session_status
 from shared import observability
 from shared.cards import (
     DIETS, card_message, event_form, quote_detail, quotes_carousel, review_card, text_message, usd, vendor_picker,
 )
 from shared.llm import chat_json
 from shared.models import (
-    RFQ, CounterRequest, CounterResult, DiscoveryRequest, DiscoveryResult, NegotiationRequest,
-    NegotiationResult, OnboardRequest, OnboardResult, Quote, VendorRef,
+    RFQ, BookingConfirmed, BookingResult, CounterRequest, CounterResult, DiscoveryRequest, DiscoveryResult,
+    NegotiationRequest, NegotiationResult, OnboardRequest, OnboardResult, Quote, VendorRef,
 )
 from shared.menu_schema import slugify
+from shared.payment import build_payment_proto, deposit_request
 from shared.selection import parse_selection
 
 load_dotenv()
@@ -46,6 +50,7 @@ NEGOTIATOR_ADDRESS = os.getenv(
     "NEGOTIATOR_ADDRESS", "agent1qg68ah5xmm3t9lcecua0dvqqknkqhqv4scrpf3cjjhx64lrqkpvd7erglhl"
 )
 FACTORY_ADDRESS = os.getenv("FACTORY_ADDRESS", "agent1qdzh8nw69qe2x0rw3tc7rg8ddt9e6lda8x7y6hqfjwfaldk2k7kzukj7rh5")
+BOOKER_ADDRESS = os.getenv("BOOKER_ADDRESS", "agent1qwa94yx3t92peup9ffkaxzzc4encnf5h5kuju4ent2nvp379mn96qc30fn2")
 ONBOARD_TIMEOUT_S = 75  # the Factory reads menus in parallel; usually well under a minute
 DEPOSIT_PCT = 0.20  # deposit taken at booking (build plan)
 NO_PRICES = "no public menu prices"
@@ -880,9 +885,17 @@ def next_step(q: dict) -> str:
 
 async def booking_action(ctx: Context, user: str, s: dict, action: str, vid: str) -> None:
     """Book (claimed) or request a confirmed quote (unclaimed): a review card first, then confirm.
-    Payment and the emails are the Booker's job; until it is connected nothing is charged or sent."""
+    Booking takes the deposit through the Payment Protocol; the Booker verifies it and confirms."""
     q, cl = s["quotes"][vid], s["checklist"]
     when = summary(cl).split(" · ")[0]
+    paid = s.get("booking", {}).get("paid") or s.get("booking", {}).get("committed")
+    if paid:  # never replace or cancel a booking whose deposit is in
+        b = s["booking"]
+        await ctx.send(user, text_message(
+            f"You're already booked with {s['quotes'][b['vendor_id']]['vendor_name']} (deposit "
+            f"{usd(b['deposit_usd'])} {'paid' if b.get('paid') else 'being confirmed'}). "
+            "Say \"start over\" for a new event."))
+        return
     if action in ("book", "request_quote"):
         if next_step(q) != action:
             await ctx.send(user, text_message("That isn't available for this caterer right now."))
@@ -922,14 +935,148 @@ async def booking_action(ctx: Context, user: str, s: dict, action: str, vid: str
     s["stage"] = "awaiting_payment" if booking["kind"] == "book" else "quote_requested"
     ctx.logger.info(f"[{s['rfq_id']}] {booking['kind']} confirmed with {vid}: {booking}")
     if booking["kind"] == "book":
-        await ctx.send(user, text_message(
-            f"Got it: {q['vendor_name']}, {when}, {usd(booking['total_usd'])} with a "
-            f"{usd(booking['deposit_usd'])} deposit. The deposit step (Stripe, through Fetch's Payment Protocol) "
-            "isn't connected yet, so nothing has been charged. Your booking is saved and ready for it."))
+        await request_deposit(ctx, user, s, q, when)
     else:
         await ctx.send(user, text_message(
             f"Saved: I'll ask {q['vendor_name']} for a confirmed quote. Sending the email isn't connected yet, "
             "so nothing has gone out; the request is saved and ready."))
+
+
+# ---- Deposit: Payment Protocol (seller) -> Booker ---------------------------
+
+def booking_message(s: dict, user: str) -> BookingConfirmed:
+    b, cl = s["booking"], s["checklist"]
+    return BookingConfirmed(
+        rfq_id=s["rfq_id"], vendor_id=b["vendor_id"], vendor_name=s["quotes"][b["vendor_id"]]["vendor_name"],
+        vendor_address=_vendor(s, b["vendor_id"]).get("agent_address", ""), version=s["version"],
+        user_address=user, event_date=cl["date"]["value"], event_time=cl["time"]["value"],
+        location=s.get("location", {}).get("resolved") or cl["location"]["value"],
+        headcount=cl["headcount"]["value"],
+        dietary_summary=display("dietary", cl["dietary"]["value"]) + "; " + display("allergies", cl["allergies"]["value"]),
+        total_usd=b["total_usd"], deposit_usd=b["deposit_usd"],
+        checkout_session_id=b["checkout"]["checkout_session_id"], trace=s["trace"],
+    )
+
+
+async def request_deposit(ctx: Context, user: str, s: dict, q: dict, when: str) -> None:
+    """Send RequestPayment for the deposit. Reuses an open Checkout Session and never creates a second one
+    once a session is paid, so tapping "Pay" twice can't charge twice."""
+    b = s["booking"]
+    checkout = b.get("checkout")
+    if checkout:
+        try:
+            status = await asyncio.to_thread(session_status, checkout["checkout_session_id"])
+        except Exception:
+            ctx.logger.exception(f"[{s['rfq_id']}] Stripe status check failed")
+            await ctx.send(user, text_message("I couldn't reach Stripe just now. Nothing new was charged; "
+                                              "tap the pay button again in a minute."))
+            return
+        if status == "complete":  # paid, but the CommitPayment was lost: let the Booker confirm it
+            b["committed"] = checkout["checkout_session_id"]
+            await ctx.send(BOOKER_ADDRESS, booking_message(s, user))
+            await ctx.send(user, text_message("Your deposit is already paid. Confirming with the caterer..."))
+            return
+        if status != "open":
+            checkout = None  # expired unpaid: start a fresh one
+    if not checkout:
+        try:
+            checkout = await asyncio.to_thread(
+                create_deposit_checkout, rfq_id=s["rfq_id"], vendor_id=b["vendor_id"], vendor_name=q["vendor_name"],
+                amount_usd=b["deposit_usd"], user_address=user, chat_session_id=str(ctx.session),
+                description=f"{DEPOSIT_PCT:.0%} deposit, {when}, {q['vendor_name']}")
+        except Exception:
+            ctx.logger.exception(f"[{s['rfq_id']}] couldn't create the Stripe checkout")
+            await ctx.send(user, text_message("I couldn't start the deposit payment right now, so nothing was "
+                                              "charged. Your booking is saved; tap the pay button again in a minute."))
+            return
+        b["checkout"] = checkout
+    s["stage"] = "awaiting_payment"
+    await ctx.send(user, deposit_request(ctx, s["rfq_id"], b["deposit_usd"], checkout,
+                                         f"{usd(b['deposit_usd'])} deposit to book {q['vendor_name']} for {when}"))
+    await ctx.send(user, text_message(
+        f"Pay the {usd(b['deposit_usd'])} deposit above to book {q['vendor_name']} for {when}. "
+        "I'll confirm with the caterer as soon as it goes through."))
+    ctx.logger.info(f"[{s['rfq_id']}] RequestPayment {usd(b['deposit_usd'])} ({checkout['checkout_session_id']})")
+
+
+async def on_commit(ctx: Context, sender: str, msg: CommitPayment):
+    s = ctx.storage.get(sender)
+    b = (s or {}).get("booking") or {}
+    txn = msg.transaction_id
+    if msg.funds.payment_method != "stripe" or not txn or txn != b.get("checkout", {}).get("checkout_session_id"):
+        ctx.logger.warning(f"CommitPayment {txn} from {sender[:16]} matches no open booking")
+        await ctx.send(sender, CancelPayment(transaction_id=txn, reason="This payment doesn't match an open Haggle booking."))
+        return
+    if b.get("paid"):  # replay
+        await ctx.send(sender, CompletePayment(transaction_id=txn))
+        return
+    if b.get("committed") == txn:
+        return  # the Booker is already on it
+    b["committed"] = txn
+    ctx.storage.set(sender, s)
+    await ctx.send(BOOKER_ADDRESS, booking_message(s, sender))
+    ctx.logger.info(f"[{s['rfq_id']}] CommitPayment {txn} -> Booker")
+    await ctx.send(sender, text_message("Payment received. Confirming your booking with the caterer..."))
+
+
+async def on_reject(ctx: Context, sender: str, msg: RejectPayment):
+    s = ctx.storage.get(sender)
+    if not s or not s.get("booking") or s["booking"].get("committed"):
+        return
+    s.pop("booking", None)
+    s["stage"] = "choosing"
+    ctx.storage.set(sender, s)
+    await send_carousel(ctx, sender, s, "No deposit was taken" + (f" ({msg.reason})" if msg.reason else "")
+                        + ". Here are your quotes again.")
+
+
+booker = Protocol(name="HaggleBookerClient", version="0.1.0")
+
+
+@booker.on_message(BookingResult)
+async def on_booking_result(ctx: Context, sender: str, result: BookingResult):
+    if sender != BOOKER_ADDRESS:
+        ctx.logger.warning(f"Ignoring BookingResult from unknown sender {sender}")
+        return
+    observability.tag(result.trace, result.rfq_id, result.vendor_id)
+    user, s = _session_for(ctx, result.rfq_id)
+    b = (s or {}).get("booking") or {}
+    txn = b.get("committed")
+    if not txn or b.get("vendor_id") != result.vendor_id:
+        ctx.logger.warning(f"[{result.rfq_id}] BookingResult for an unknown booking")
+        return
+    name = s["quotes"][b["vendor_id"]]["vendor_name"]
+    ctx.logger.info(f"[{result.rfq_id}] booking {result.status}: {result.detail}")
+
+    if result.status == "confirmed":
+        b["paid"], s["stage"] = True, "booked"
+        ctx.storage.set(user, s)
+        await ctx.send(user, CompletePayment(transaction_id=txn))
+        cl = s["checklist"]
+        await ctx.send(user, text_message(
+            f"You're booked! {name}, {summary(cl).split(' · ')[0]}, {display('headcount', cl['headcount']['value'])}. "
+            f"Deposit paid: {usd(b['deposit_usd'])}; balance to the caterer: {usd(round(b['total_usd'] - b['deposit_usd'], 2))}."
+            + (" A confirmation email is on its way." if result.email_sent else "")))
+        return
+
+    if result.status == "vendor_declined":
+        await ctx.send(user, CancelPayment(transaction_id=txn, reason=result.detail))
+        s.pop("booking", None)
+        s["stage"] = "choosing"
+        ctx.storage.set(user, s)
+        await send_carousel(ctx, user, s, f"Sorry: {result.detail}. Pick another caterer.")
+        return
+
+    # payment_failed or error: nothing booked; the user can tap pay again (the same checkout is reused).
+    b.pop("committed", None)
+    ctx.storage.set(user, s)
+    if result.status == "payment_failed":
+        await ctx.send(user, CancelPayment(transaction_id=txn, reason=result.detail))
+        await ctx.send(user, text_message(f"Stripe hasn't confirmed the deposit ({result.detail}). "
+                                          "Finish the checkout, then tap the pay button again."))
+    else:
+        await ctx.send(user, text_message("I couldn't confirm the payment with Stripe just now. You won't be "
+                                          "charged twice: tap the pay button again in a minute."))
 
 
 @negotiation.on_message(NegotiationResult)
@@ -1013,6 +1160,8 @@ agent.include(chat, publish_manifest=True)
 agent.include(discovery)
 agent.include(negotiation)
 agent.include(onboarding)
+agent.include(booker)
+agent.include(build_payment_proto(on_commit, on_reject), publish_manifest=True)
 
 if __name__ == "__main__":
     observability.init("concierge")
