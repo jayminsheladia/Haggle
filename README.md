@@ -13,7 +13,7 @@ Haggle is a multi-agent group catering marketplace for Los Angeles, built on Fet
 |---|---|---|---|
 | Concierge `@haggle` | `agents/concierge.py` | `agent1qtczn7424hmp43jqetnl9pydsmqhcfzfg8muzyl5ajxwyep0mt7lxxewe9k` | [profile](https://agentverse.ai/agents/details/agent1qtczn7424hmp43jqetnl9pydsmqhcfzfg8muzyl5ajxwyep0mt7lxxewe9k/profile) |
 | Discovery | `agents/discovery.py` | `agent1q27868llc79a2pncexj4z6nejtjw87rg4p3cv4tjt27q9vuh2s8w7clzg5y` | [profile](https://agentverse.ai/agents/details/agent1q27868llc79a2pncexj4z6nejtjw87rg4p3cv4tjt27q9vuh2s8w7clzg5y/profile) |
-| Vendor Agent Factory | `agents/factory.py` | `agent1qdzh8nw69qe2x0rw3tc7rg8ddt9e6lda8x7y6hqfjwfaldk2k7kzukj7rh5` | _TBD (needs a free mailbox slot)_ |
+| Vendor Agent Factory | `agents/factory.py` | `agent1qdzh8nw69qe2x0rw3tc7rg8ddt9e6lda8x7y6hqfjwfaldk2k7kzukj7rh5` | [profile](https://agentverse.ai/agents/details/agent1qdzh8nw69qe2x0rw3tc7rg8ddt9e6lda8x7y6hqfjwfaldk2k7kzukj7rh5/profile) |
 | Negotiator | `agents/negotiator.py` | `agent1qwv99f5t6fyjgyjemmdsnluzmayarx8z4v40ytx0df0njqffl4vy6hdgj2z` | _TBD_ |
 | Booker | `agents/booker.py` | _TBD_ | _TBD_ |
 | Follow-up | `agents/followup.py` | _TBD_ | _TBD_ |
@@ -22,19 +22,19 @@ Haggle is a multi-agent group catering marketplace for Los Angeles, built on Fet
 
 | Vendor | Status | Address | Agentverse profile |
 |---|---|---|---|
-| `alfredo-catering-inc` | unclaimed | `agent1qt9gzagq7z8zauncjqh57ppu5ckfqfj5vr7ma0ed525vwxq9lplkgpf092a` | _local endpoint (no mailbox slot)_ |
-| `beverly-catering` | unclaimed | `agent1q0tyc5rg495qj2nxch7hdydz9sgh5cshfav4jcr3vwj7fn5vgpz5uhltzxf` | _local endpoint (no mailbox slot)_ |
-| `bite-catering-couture` | unclaimed | `agent1qt3d4tjkk0j95rxxrx96e8ev5jv4c7axzdmn0sjvdk3cgj69uxag7pftz0m` | _local endpoint (no mailbox slot)_ |
+| `alfredo-catering-inc` | unclaimed | `agent1qt9gzagq7z8zauncjqh57ppu5ckfqfj5vr7ma0ed525vwxq9lplkgpf092a` | [profile](https://agentverse.ai/agents/details/agent1qt9gzagq7z8zauncjqh57ppu5ckfqfj5vr7ma0ed525vwxq9lplkgpf092a/profile) |
+| `beverly-catering` | unclaimed | `agent1q0tyc5rg495qj2nxch7hdydz9sgh5cshfav4jcr3vwj7fn5vgpz5uhltzxf` | [profile](https://agentverse.ai/agents/details/agent1q0tyc5rg495qj2nxch7hdydz9sgh5cshfav4jcr3vwj7fn5vgpz5uhltzxf/profile) |
+| `bite-catering-couture` | unclaimed | `agent1qt3d4tjkk0j95rxxrx96e8ev5jv4c7axzdmn0sjvdk3cgj69uxag7pftz0m` | [profile](https://agentverse.ai/agents/details/agent1qt3d4tjkk0j95rxxrx96e8ev5jv4c7axzdmn0sjvdk3cgj69uxag7pftz0m/profile) |
 | `california-fresh` | unclaimed | `agent1qvdktefhz79faf8ett243nxqks467jwaq2wcxzywcd2p32f3pl3pccyl094` | [profile](https://agentverse.ai/agents/details/agent1qvdktefhz79faf8ett243nxqks467jwaq2wcxzywcd2p32f3pl3pccyl094/profile) |
-| `demo-bruin-tacos` | claimed (demo) | `agent1qg9hwj6783d4eax7tl0taj94h3msmyp23ul896zhvwr3f0efen0dxmnlu53` | _local endpoint (no mailbox slot)_ |
-| `demo-westwood-grill` | claimed (demo) | `agent1q2c5qk4ach3u45xlwqyk8mrpymg9vl7m8uqsk064khatvp0cvw65umpasnp` | _local endpoint (no mailbox slot)_ |
-| `rutts-hawaiian-cafe-catering` | unclaimed | `agent1qfqdcnj54d0tgg0v58sq4vkr2cg9ganf7egee2jkvrgzj03956h5jgglmcd` | _local endpoint (no mailbox slot)_ |
-| `santa-maria-bbq-on-site-catering` | unclaimed | `agent1qtuxvjfct873q3xpnfkjshcytf9rnjprg8dkuepl8f2q0ga6xt6lgjq2gzj` | _local endpoint (no mailbox slot)_ |
+| `demo-bruin-tacos` | claimed (demo) | `agent1qg9hwj6783d4eax7tl0taj94h3msmyp23ul896zhvwr3f0efen0dxmnlu53` | [profile](https://agentverse.ai/agents/details/agent1qg9hwj6783d4eax7tl0taj94h3msmyp23ul896zhvwr3f0efen0dxmnlu53/profile) |
+| `demo-westwood-grill` | claimed (demo) | `agent1q2c5qk4ach3u45xlwqyk8mrpymg9vl7m8uqsk064khatvp0cvw65umpasnp` | [profile](https://agentverse.ai/agents/details/agent1q2c5qk4ach3u45xlwqyk8mrpymg9vl7m8uqsk064khatvp0cvw65umpasnp/profile) |
+| `rutts-hawaiian-cafe-catering` | unclaimed | `agent1qfqdcnj54d0tgg0v58sq4vkr2cg9ganf7egee2jkvrgzj03956h5jgglmcd` | [profile](https://agentverse.ai/agents/details/agent1qfqdcnj54d0tgg0v58sq4vkr2cg9ganf7egee2jkvrgzj03956h5jgglmcd/profile) |
+| `santa-maria-bbq-on-site-catering` | unclaimed | `agent1qtuxvjfct873q3xpnfkjshcytf9rnjprg8dkuepl8f2q0ga6xt6lgjq2gzj` | [profile](https://agentverse.ai/agents/details/agent1qtuxvjfct873q3xpnfkjshcytf9rnjprg8dkuepl8f2q0ga6xt6lgjq2gzj/profile) |
 | `sunnin-lebanese-cafe` | unclaimed | `agent1qf5h5462n8txj65027u0nmufrxezdd799twvql67qvus77ntxe9gk3jxvtx` | [profile](https://agentverse.ai/agents/details/agent1qf5h5462n8txj65027u0nmufrxezdd799twvql67qvus77ntxe9gk3jxvtx/profile) |
-| `sweetpea-boutique-kitchen` | unclaimed | `agent1qdf9fhtwsgltfhw5urvjtfvym9umjxagjlcdfartjvphkj07xlq57n8kn8g` | _local endpoint (no mailbox slot)_ |
+| `sweetpea-boutique-kitchen` | unclaimed | `agent1qdf9fhtwsgltfhw5urvjtfvym9umjxagjlcdfartjvphkj07xlq57n8kn8g` | [profile](https://agentverse.ai/agents/details/agent1qdf9fhtwsgltfhw5urvjtfvym9umjxagjlcdfartjvphkj07xlq57n8kn8g/profile) |
 | `tender-greens` | unclaimed | `agent1qffmfuystcvh2zswkf6stu43rekq02cd0qt2hqtpapgtak54a7sgxd9p0re` | [profile](https://agentverse.ai/agents/details/agent1qffmfuystcvh2zswkf6stu43rekq02cd0qt2hqtpapgtak54a7sgxd9p0re/profile) |
 | `ucla-conferences-catering` | unclaimed | `agent1qtcdzyl760qzmmprqmtruy0dpz8wumrlsl3u0n5v60xmke85dcxwudtw4fs` | [profile](https://agentverse.ai/agents/details/agent1qtcdzyl760qzmmprqmtruy0dpz8wumrlsl3u0n5v60xmke85dcxwudtw4fs/profile) |
-| `yekta-catering-takeout` | unclaimed | `agent1q2ka6zhjew0y9uzhjrgsvgzpqpj9e2vg4afvgrpxt2rk07md8ks674h0l6p` | _local endpoint (no mailbox slot)_ |
+| `yekta-catering-takeout` | unclaimed | `agent1q2ka6zhjew0y9uzhjrgsvgzpqpj9e2vg4afvgrpxt2rk07md8ks674h0l6p` | [profile](https://agentverse.ai/agents/details/agent1q2ka6zhjew0y9uzhjrgsvgzpqpj9e2vg4afvgrpxt2rk07md8ks674h0l6p/profile) |
 
 Every agent prints its address on startup — paste it here right away.
 
