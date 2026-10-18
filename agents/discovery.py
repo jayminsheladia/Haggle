@@ -127,7 +127,11 @@ async def on_discovery_request(ctx: Context, sender: str, req: DiscoveryRequest)
     observability.tag(req.trace, req.rfq_id)
     where = req.location or f"{req.lat},{req.lng}"
     ctx.logger.info(f"[{req.rfq_id}] {req.category} within {req.radius_mi} mi of {where}")
-    result = await discover(req)
+    try:
+        result = await discover(req)
+    except Exception as e:  # always reply, so the Concierge never waits on a crashed search
+        ctx.logger.exception(f"[{req.rfq_id}] discovery crashed")
+        result = DiscoveryResult(rfq_id=req.rfq_id, error=f"discovery failed: {e}", trace=req.trace)
     ctx.logger.info(
         f"[{req.rfq_id}] {len(result.vendors)} vendors" + (f"; error: {result.error}" if result.error else "")
     )
