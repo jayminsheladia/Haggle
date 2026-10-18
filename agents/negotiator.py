@@ -54,6 +54,13 @@ def pick_target(quote: Quote, budget_usd: float) -> float:
     return round(quote.total_usd * (1 - DEFAULT_DISCOUNT), 2)
 
 
+def target_reason(quote: Quote, budget_usd: float, target: float) -> str:
+    """What the Negotiator tells the vendor about its ask (plain words; the numbers come from code)."""
+    if budget_usd > 0 and quote.total_usd > budget_usd and target == round(budget_usd, 2):
+        return f"the customer's budget is ${budget_usd:,.2f}"
+    return f"we're asking about {DEFAULT_DISCOUNT:.0%} off your quote of ${quote.total_usd:,.2f}"
+
+
 def _ranked_from_state(st: dict) -> List[RankedQuote]:
     quotes = [Quote.parse_raw(q) for q in st["quotes"].values()]
     return rank_quotes(quotes, st["rfq"]["budget_usd"], {v: r["rating"] for v, r in st["vendors"].items()})
@@ -109,10 +116,12 @@ def make_negotiator(**agent_kwargs) -> Agent:
         key = f"neg:{msg.rfq_id}:v{version}"
         st = ctx.storage.get(key) if version else None
 
+        asked = {"target_usd": 0.0, "reason": ""}
+
         def result(quote=None, reason=""):
             return CounterResult(rfq_id=msg.rfq_id, vendor_id=msg.vendor_id, quote=quote,
                                  declined_reason=reason, ranked=_ranked_from_state(st) if st else [],
-                                 trace=msg.trace)
+                                 trace=msg.trace, **asked)
 
         if not st or msg.vendor_id not in st["quotes"]:
             await ctx.send(sender, result(reason="no open quote from this vendor"))
@@ -126,7 +135,9 @@ def make_negotiator(**agent_kwargs) -> Agent:
             return
 
         target = msg.target_usd or pick_target(current, st["rfq"]["budget_usd"])
-        counter = Counter(rfq_id=msg.rfq_id, vendor_id=msg.vendor_id, target_usd=target,
+        why = target_reason(current, st["rfq"]["budget_usd"], target)
+        asked.update(target_usd=target, reason=why)
+        counter = Counter(rfq_id=msg.rfq_id, vendor_id=msg.vendor_id, target_usd=target, reason=why,
                           round=current.round + 1, version=st["rfq"]["version"], trace=msg.trace)
         reply, _ = await ctx.send_and_receive(st["vendors"][msg.vendor_id]["address"], counter,
                                               response_type={Quote, Decline}, timeout=QUOTE_TIMEOUT_S)

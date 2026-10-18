@@ -25,7 +25,7 @@ from uagents_core.contrib.protocols.chat import (
 
 from shared import observability
 from shared.cards import (
-    DIETS, card_message, event_form, quote_detail, quotes_carousel, review_card, text_message, usd, vendor_picker,
+    DIETS, card_message, event_form, picker_carousel, quote_detail, quotes_carousel, review_card, text_message, usd,
 )
 from shared.llm import chat_json
 from shared.models import (
@@ -360,6 +360,10 @@ async def _on_chat(ctx: Context, sender: str, msg: ChatMessage):
         await ctx.send(sender, text_message("That card is from an earlier request. Here's where we are now."))
         await show_current(ctx, sender, s)
         return
+    if action == "toggle_vendor" and s.get("vendors"):
+        await toggle_vendor(ctx, sender, s, sel, text)
+        ctx.storage.set(sender, s)
+        return
     if action in ("select_vendors", "select_all") and s.get("vendors"):
         await pick_vendors(ctx, sender, s, sel, text)
         ctx.storage.set(sender, s)
@@ -394,7 +398,8 @@ async def _on_chat(ctx: Context, sender: str, msg: ChatMessage):
         if s.get("searched_fp"):
             s["version"] += 1  # the request changed: old quotes must not be mixed with new ones
         s["searched_fp"] = fingerprint(checklist)
-        for k in ("vendors", "quotes", "ranked", "fits", "declined", "list_prices", "shortlist", "countering"):
+        for k in ("vendors", "quotes", "ranked", "fits", "declined", "list_prices", "shortlist", "countering",
+                  "picked", "negolog"):
             s.pop(k, None)
         s["stage"] = "discovering"
         s["asked"] = []
@@ -450,7 +455,7 @@ def vendor_entry(v) -> dict:
     if v.agent_address and v.name.startswith("agent1"):
         vid, name = v.agent_address, "Haggle vendor agent"  # search had no name for this agent
     elif v.agent_address:
-        vid, name = v.name, v.name.replace("-", " ").title()  # vendor agents are named by slug
+        vid, name = v.name, v.business_name or v.name.replace("-", " ").title()  # vendor agents are named by slug
     else:
         vid, name = slugify(v.name), v.name  # the slug the Factory will give its agent
     meta = []
@@ -484,15 +489,30 @@ async def send_picker(ctx: Context, user: str, s: dict) -> None:
     connected = sum(bool(v.get("claimed")) for v in vendors)
     note = (f"{connected} {'are' if connected != 1 else 'is'} connected to Haggle and can negotiate; for the others "
             "I'll use their public menus." if connected else "I'll get estimates from their public menus.")
+    picked = s.setdefault("picked", [])
+    lead = (f"Selected: {', '.join(v['display_name'] for v in vendors if v['vendor_id'] in picked)}. "
+            "Select more, or swipe to the end and tap Get quotes." if picked else
+            f"I found {len(vendors)} caterers near {loc}. {note} Swipe through and select the ones you want quotes from.")
     await ctx.send(user, card_message(
-        f"I found {len(vendors)} caterers near {loc}. {note} Pick the ones you want quotes from.",
-        "custom",
-        vendor_picker(
+        lead,
+        "carousel",
+        picker_carousel(
             s["rfq_id"], loc,
             [{"vendor_id": v["vendor_id"], "name": v["display_name"], "photo_url": v["photo_url"],
               "meta": v["meta"], "connected": v.get("claimed", False)} for v in vendors],
+            set(picked),
         ),
     ))
+
+
+async def toggle_vendor(ctx: Context, user: str, s: dict, sel: dict, text: str) -> None:
+    ids = [v["vendor_id"] for v in s["vendors"]]
+    vid = sel.get("vendor_id") if sel.get("vendor_id") in ids else next(
+        (v["vendor_id"] for v in s["vendors"] if v["display_name"].lower() in text.lower()), None)
+    if vid:
+        picked = s.setdefault("picked", [])
+        picked.remove(vid) if vid in picked else picked.append(vid)
+    await send_picker(ctx, user, s)
 
 
 @discovery.on_message(DiscoveryResult)
@@ -575,12 +595,13 @@ async def pick_vendors(ctx: Context, user: str, s: dict, sel: dict, text: str) -
     if sel.get("action") == "select_all":
         idx = list(range(len(vendors)))
     else:
-        idx = [i for i in range(len(vendors)) if _truthy(sel.get(f"pick_{i}"))]
+        idx = [i for i, v in enumerate(vendors) if v["vendor_id"] in s.get("picked", [])]
+        idx = idx or [i for i in range(len(vendors)) if _truthy(sel.get(f"pick_{i}"))]
         if not idx:  # planner prose: "picked pick_0 and pick_3" or caterer names
             idx = sorted({int(m) for m in re.findall(r"\bpick_(\d+)\b", text) if int(m) < len(vendors)}
                          | {i for i, v in enumerate(vendors) if v["display_name"].lower() in text.lower()})
     if not idx:
-        await ctx.send(user, text_message("Tick at least one caterer, or tap \"Get quotes from all\"."))
+        await ctx.send(user, text_message("Select at least one caterer, or tap \"Quote all\"."))
         await send_picker(ctx, user, s)
         return
 
@@ -595,7 +616,8 @@ async def pick_vendors(ctx: Context, user: str, s: dict, sel: dict, text: str) -
         return
     if s.get("shortlist"):
         s["version"] += 1  # a new shortlist is a new round of quotes
-    for k in ("quotes", "ranked", "fits", "declined", "list_prices", "countering", "onboarding", "onboard_failed"):
+    for k in ("quotes", "ranked", "fits", "declined", "list_prices", "countering", "onboarding", "onboard_failed",
+              "negolog"):
         s.pop(k, None)
     s["shortlist"] = shortlist
     ctx.storage.set(f"rfq:{s['rfq_id']}", user)
@@ -821,6 +843,8 @@ def detail_rows(s: dict, vid: str) -> list[tuple[str, str]]:
         rows.append(("Distance", f"{v['distance_mi']} mi"))
     if q.get("conflicts"):
         rows.append(("Can't confirm", "; ".join(q["conflicts"])))
+    for speaker, said in s.get("negolog", {}).get(vid, []):
+        rows.append((f"💬 {speaker}", said))
     for line in q.get("menu_preview", []):
         name, _, price = line.partition(" — ")
         rows.append((f"Menu · {name}", price or "on the menu"))
@@ -844,13 +868,7 @@ async def quote_action(ctx: Context, user: str, s: dict, action: str, sel: dict,
 
     q = s["quotes"][vid]
     if action == "pick_quote":
-        view = quote_view(s, vid) | {"rows": detail_rows(s, vid)}
-        await ctx.send(user, card_message(
-            f"{q['vendor_name']}: " + ("no public prices yet, but here's their menu." if on_request(q) else
-                                      f"{usd(q['total_usd'])} for {s['checklist']['headcount']['value']} guests."),
-            "detail",
-            quote_detail(s["rfq_id"], view, can_negotiate(q), next_step(q)),
-        ))
+        await send_detail(ctx, user, s, vid)
         return
     if action in ("book", "request_quote", "confirm", "cancel"):
         await booking_action(ctx, user, s, action, vid)
@@ -870,6 +888,15 @@ async def quote_action(ctx: Context, user: str, s: dict, action: str, sel: dict,
     await ctx.send(NEGOTIATOR_ADDRESS, CounterRequest(rfq_id=s["rfq_id"], vendor_id=vid, trace=s["trace"]))
     ctx.logger.info(f"[{s['rfq_id']}] counter request for {vid}")
     await ctx.send(user, text_message(f"Asking {q['vendor_name']} for a better price..."))
+
+
+async def send_detail(ctx: Context, user: str, s: dict, vid: str, narration: str = "") -> None:
+    q = s["quotes"][vid]
+    view = quote_view(s, vid) | {"rows": detail_rows(s, vid)}
+    narration = narration or f"{q['vendor_name']}: " + (
+        "no public prices yet, but here's their menu." if on_request(q) else
+        f"{usd(q['total_usd'])} for {s['checklist']['headcount']['value']} guests.")
+    await ctx.send(user, card_message(narration, "detail", quote_detail(s["rfq_id"], view, can_negotiate(q), next_step(q))))
 
 
 def next_step(q: dict) -> str:
@@ -946,6 +973,13 @@ async def on_negotiation_result(ctx: Context, sender: str, result: NegotiationRe
 
     s["quotes"], s["list_prices"], s["declined"] = {}, {}, dict(result.declined)
     _store_ranked(s, result.ranked)
+    cl = s["checklist"]
+    asked = f"Quote request: {display('headcount', cl['headcount']['value'])}, {summary(cl).split(' · ')[0]}"
+    s["negolog"] = {}
+    for vid in s["ranked"]:
+        q = s["quotes"][vid]
+        answer = "No public prices: menu only" if on_request(q) else f"{usd(q['total_usd'])}" + (f" ({q['note']})" if q["note"] else "")
+        s["negolog"][vid] = [["Haggle", asked], [q["vendor_name"], answer]]
     no_prices = [_vendor(s, vid).get("display_name", vid) for vid, why in s["declined"].items() if NO_PRICES in why]
     declined = "; ".join(f"{_vendor(s, vid).get('display_name', vid)}: {why}"
                          for vid, why in s["declined"].items() if NO_PRICES not in why)
@@ -1002,11 +1036,35 @@ async def on_counter_result(ctx: Context, sender: str, result: CounterResult):
         narration = f"{name} can't do this one" + (f": {result.declined_reason}." if result.declined_reason else ".")
     else:
         narration = f"{name} won't go lower" + (f": {result.declined_reason}." if result.declined_reason else ".")
+    log = s.setdefault("negolog", {}).setdefault(vid, [])
+    lines = []
+    if result.target_usd:
+        ask = f"Could you do {usd(result.target_usd)}?" + (f" ({result.reason})" if result.reason else "")
+        log.append(["Haggle", ask])
+        lines.append(f"🤖 Haggle → {name}: {ask}")
+        if status == "declined":
+            said = result.declined_reason or "We can't do this one."
+        elif status == "needs_approval":
+            said = "That's below what I can agree to on my own. Let me check with the owner."
+        else:
+            said = (s["quotes"][vid].get("note") or "") + (f" New total: {usd(after)}." if after != before else "")
+        log.append([name, said.strip()])
+        lines.append(f"🏪 {name} → Haggle: {said.strip()}")
+    else:  # the owner answered a pending approval
+        said = (s["quotes"].get(vid, {}).get("note") or result.declined_reason or "") + (
+            f" Price: {usd(after)}." if status != "declined" else "")
+        log.append([f"{name} (owner)", said.strip()])
+        lines.append(f"🏪 {name} (owner) → Haggle: {said.strip()}")
     ctx.storage.set(user, s)
-    if not s["ranked"]:
-        await ctx.send(user, text_message(narration + " No quotes are left. Pick other caterers, or say \"start over\"."))
+    transcript = "Negotiation with " + name + ":\n" + "\n".join(lines) + "\n\n" + narration
+    if vid not in s["quotes"]:
+        await ctx.send(user, text_message(transcript))
+        if s["ranked"]:
+            await send_carousel(ctx, user, s, "Here are the other quotes.")
+        else:
+            await ctx.send(user, text_message("No quotes are left. Pick other caterers, or say \"start over\"."))
         return
-    await send_carousel(ctx, user, s, narration)
+    await send_detail(ctx, user, s, vid, transcript)
 
 
 agent.include(chat, publish_manifest=True)

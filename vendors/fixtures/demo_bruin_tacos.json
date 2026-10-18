@@ -48,5 +48,6 @@
     "delivery_fee_usd": 25.0
   },
   "extraction_status": "extracted",
-  "rating": null
+  "rating": null,
+  "photo_url": "https://raw.githubusercontent.com/naman-gupta-02/Haggle/concierge/assets/vendors/demo-bruin-tacos.jpg"
 }

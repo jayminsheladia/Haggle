@@ -84,9 +84,13 @@ async def place_photo(place_id: str, client: httpx.AsyncClient, name: str = "") 
     try:
         r = await client.post(f"{BASE_URL}/places:searchText", json={"textQuery": name, "pageSize": 5,
                               "locationBias": _circle(*LA_CENTER, MAX_BIAS_RADIUS_M)},
-                              headers=_headers("places.id,places.photos"))
+                              headers=_headers("places.id,places.photos,places.displayName"))
         r.raise_for_status()
-        match = next((p for p in r.json().get("places", []) if p.get("id") == place_id), None)
+        found = r.json().get("places", [])
+        match = next((p for p in found if p.get("id") == place_id), None)
+        if match is None:  # the stored Place ID can be stale: take the closest same-name result instead
+            key = name.lower().split()[0]
+            match = next((p for p in found if p.get("photos") and key in str(p).lower()), None)
     except (httpx.HTTPError, ValueError):
         return None
     photos = (match or {}).get("photos") or []

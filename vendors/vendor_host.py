@@ -53,7 +53,8 @@ def vendor_address(slug: str) -> str:
     return Identity.from_seed(vendor_seed(slug), 0).address
 
 
-async def register_mailbox(seed: str, name: str, description: str, readme_text: str, protocols: list[str]) -> bool:
+async def register_mailbox(seed: str, name: str, description: str, readme_text: str, protocols: list[str],
+                           avatar_url: str = "") -> bool:
     """Register an agent's mailbox in Agentverse with AGENTVERSE_API_KEY, as the Inspector's Connect button does."""
     api_key = os.getenv("AGENTVERSE_API_KEY")
     if not api_key:
@@ -63,7 +64,7 @@ async def register_mailbox(seed: str, name: str, description: str, readme_text: 
     details = RegistrationRequest(
         address=identity.address,
         name=name,
-        profile=AgentProfile(description=description, readme=readme_text),
+        profile=AgentProfile(description=description, readme=readme_text, avatar_url=avatar_url),
         endpoints=parse_endpoint_config(None, agentverse, mailbox=True),
         protocols=[p.removeprefix("proto:") for p in protocols],
     )
@@ -82,7 +83,7 @@ async def register_mailbox(seed: str, name: str, description: str, readme_text: 
 
 async def register_vendor_mailbox(menu: VendorMenu) -> bool:
     return await register_mailbox(vendor_seed(menu.slug), menu.slug, description_for(menu), readme_for(menu),
-                                  [PROTOCOL_DIGEST, CHAT_PROTOCOL_DIGEST])
+                                  [PROTOCOL_DIGEST, CHAT_PROTOCOL_DIGEST], avatar_url=menu.photo_url)
 
 
 async def wait_registered(address: str, timeout_s: float = REGISTER_WAIT_S) -> bool:

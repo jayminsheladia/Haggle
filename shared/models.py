@@ -132,6 +132,8 @@ class CounterResult(Model):
     quote: Optional[Quote] = None  # None if the vendor declined
     declined_reason: str = ""
     ranked: List[RankedQuote] = []  # refreshed ranking
+    target_usd: float = 0.0  # what the Negotiator asked for in this round (0 = no counter was sent)
+    reason: str = ""  # why it asked for that, as said to the vendor
     trace: str = ""
 
 
@@ -229,6 +231,7 @@ class VendorInfo(Model):
     lng: Optional[float] = None
     distance_mi: float = 0.0  # 0.0 for Agentverse vendors (no location yet)
     claimed: bool = False  # the business set up (claimed) its agent: "Connected"
+    business_name: str = ""  # display name for agent vendors (their agent name is the slug)
 
 
 class DiscoveryResult(Model):

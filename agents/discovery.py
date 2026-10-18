@@ -27,6 +27,12 @@ AGENTVERSE_SEARCH_URL = "https://agentverse.ai/v1/search/agents"
 HTTP_TIMEOUT_S = 10
 
 
+def _business_name(description: str) -> str:
+    """vendors/template.py descriptions start "<Name> ✓ Verified: ..." or "<Name> (unofficial · ...): ..."."""
+    head = description.split(":")[0]
+    return head.replace(" ✓ Verified", "").split(" (unofficial")[0].strip()
+
+
 async def agentverse_vendors(limit: int, client: httpx.AsyncClient) -> list[VendorInfo]:
     """Active vendor agents on Agentverse that speak HaggleNegotiation.
 
@@ -45,7 +51,9 @@ async def agentverse_vendors(limit: int, client: httpx.AsyncClient) -> list[Vend
     r.raise_for_status()
     return [
         VendorInfo(name=a.get("name") or a["address"], source="agentverse", agent_address=a["address"],
-                   claimed="✓ Verified" in (a.get("description") or ""))  # set by vendors/template.py
+                   claimed="✓ Verified" in (a.get("description") or ""),  # set by vendors/template.py
+                   business_name=_business_name(a.get("description") or ""),
+                   photo_url=a.get("avatar_href") or "")
         for a in r.json().get("agents", [])
         if a.get("status") == "active"
     ]

@@ -162,7 +162,7 @@ def make_vendor_agent(menu: VendorMenu | dict, seed: str, on_menu_change: Option
         menu = VendorMenu.model_validate(menu)
     log = logging.getLogger(f"vendor.{menu.slug}")
     agent = Agent(name=menu.slug, seed=seed, readme_path=str(write_readme(menu)),
-                  description=description_for(menu), **agent_kwargs)
+                  description=description_for(menu), avatar_url=menu.photo_url or None, **agent_kwargs)
     neg = negotiation_protocol()
     chat = Protocol(spec=chat_protocol_spec)
 
