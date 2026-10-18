@@ -32,6 +32,7 @@ from uagents_core.identity import Identity
 from uagents_core.registration import AgentProfile, RegistrationRequest
 
 from shared.menu_schema import VendorMenu
+from vendors import owner_inbox
 from vendors.template import (
     DATA_DIR, PROTOCOL_DIGEST, PROTOCOL_NAME, description_for, make_vendor_agent, readme_for,
 )
@@ -113,6 +114,7 @@ class VendorHost:
     def __init__(self, port_base: int | None = None):
         self.agents: dict[str, Agent] = {}
         self.modes: dict[str, str] = {}
+        self.ports: dict[str, int] = {}  # local port: REST endpoints such as /owner-reply
         self._tasks: list[asyncio.Task] = []
         self._next_port = port_base or int(os.getenv("VENDOR_PORT_BASE", "8110"))
         self._lock = asyncio.Lock()
@@ -137,6 +139,7 @@ class VendorHost:
             self._tasks.append(asyncio.create_task(agent.run_async()))
             self.agents[menu.slug] = agent
             self.modes[menu.slug] = "mailbox" if mailbox else "local endpoint"
+            self.ports[menu.slug] = port
             self.write_addresses()
         live = await wait_registered(agent.address)
         status = "claimed" if menu.claimed else "unclaimed"
@@ -191,6 +194,7 @@ async def main() -> None:
     print(f"vendor host: POST http://127.0.0.1:{port}/add-vendor", flush=True)
     await host.start_all()
     print(f"hosting {len(host.agents)} vendor agents; addresses in {ADDRESSES_FILE}", flush=True)
+    await owner_inbox.run(host)  # owner replies by text (returns at once when Photon isn't configured)
     await asyncio.Event().wait()
 
 

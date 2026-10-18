@@ -169,7 +169,14 @@ In ASI:One: `@haggle catering for 60 Friday 6pm at Ackerman Union UCLA, $900 max
 
 Vendor agents can be chatted with directly: ask about the menu, or as the owner send `claim`, then the code,
 then fill in the rules form. Owners answer approvals with `approve A1234`, `decline A1234`, `counter A1234 750`
-(or `POST /owner-reply` on the vendor's port, for the Photon bridge).
+(or `POST /owner-reply` on the vendor's port).
+
+**Owner replies by text:** approval requests are texted to the owner through Photon (`OWNER_TEST_PHONE` during
+development). The vendor host reads texts sent to our Photon line every 15 s (`vendors/owner_inbox.py`, Photon
+`GET /messages?direction=received`) and passes `YES`, `NO` or a price (`525`, `counter A1234 525`) to the vendor
+agent that asked, which updates the quote in the customer's chat and texts the owner the result. A bare reply answers
+the only pending request; with several pending, the owner is asked to add the id. Texts with no pending request are
+ignored (the test phone also gets the organizer's texts), and each text is handled once.
 
 _TBD — how to run a full request → quote → negotiate → pay flow in ASI:One (Stripe test card `4242 4242 4242 4242`)._
 
