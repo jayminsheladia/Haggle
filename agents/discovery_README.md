@@ -12,6 +12,17 @@ Discovery is the search service behind Haggle, the group catering marketplace fo
 - Finds vendor agents on Agentverse that speak Haggle's negotiation protocol
 - If one source fails, still returns what the other found
 
+## Chat with it
+
+Message **@haggle-discovery** in ASI:One with a venue or neighborhood in Los Angeles. It replies with the closest caterers, their rating, phone number and a Google Maps link. To get quotes, negotiate and book, chat with **@haggle**.
+
+## Example prompts
+
+- "Caterers near Ackerman Union, UCLA"
+- "Find catering in Santa Monica"
+- "Who caters near 405 Hilgard Ave?"
+- "Catering around Downtown LA for 60 people"
+
 ## Protocol
 
 `HaggleDiscovery` v0.1.0 — send a `DiscoveryRequest` (`rfq_id`, `category`, `location` or `lat`/`lng`, `radius_mi`, `limit`) and get back a `DiscoveryResult` with a list of vendors.
