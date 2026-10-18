@@ -263,7 +263,8 @@ def picker_slider(rfq_id: str, location: str, vendors: list[dict]) -> dict:
             "type": "section",
             "title": v["name"],
             "children": [
-                *([{"type": "image", "src": v["photo_url"], "alt": v["name"], "aspect_ratio": "4:3"}]
+                # A short 3:1 banner: cards can't size images, only shape them, and 4:3 photos filled the screen.
+                *([{"type": "image", "src": v["photo_url"], "alt": v["name"], "aspect_ratio": "3:1"}]
                   if v["photo_url"] else []),
                 *([{"type": "text", "value": v["meta"], "style": "muted"}] if v["meta"] else []),
                 status,
