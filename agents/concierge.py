@@ -8,6 +8,7 @@ Owner: Person A
 import json
 import os
 import re
+import time
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from uuid import uuid4
@@ -213,7 +214,7 @@ async def extract_event(ctx: Context, text: str) -> dict | None:
     system = EXTRACT_PROMPT.format(today=now.date().isoformat(), weekday=now.strftime("%A"))
     for attempt in range(2):
         try:
-            data = await chat_json(system + (STRICT_SUFFIX if attempt else ""), text)
+            data = await chat_json(system + (STRICT_SUFFIX if attempt else ""), text, reasoning_effort="minimal")
         except Exception:
             ctx.logger.exception("Event extraction failed")
             data = None
@@ -323,6 +324,18 @@ async def on_startup(ctx: Context):
 
 @chat.on_message(ChatMessage)
 async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
+    started = time.monotonic()
+    sent_at = msg.timestamp if msg.timestamp.tzinfo else msg.timestamp.replace(tzinfo=timezone.utc)
+    lag = (datetime.now(timezone.utc) - sent_at).total_seconds()
+    preview = "".join(c.text for c in msg.content if isinstance(c, TextContent))[:80]
+    ctx.logger.info(f"chat from {sender[:16]} (sent {lag:.1f}s ago): {preview!r}")
+    try:
+        await _on_chat(ctx, sender, msg)
+    finally:
+        ctx.logger.info(f"chat from {sender[:16]} handled in {time.monotonic() - started:.1f}s")
+
+
+async def _on_chat(ctx: Context, sender: str, msg: ChatMessage):
     await ctx.send(
         sender,
         ChatAcknowledgement(timestamp=datetime.now(timezone.utc), acknowledged_msg_id=msg.msg_id),
