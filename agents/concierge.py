@@ -80,6 +80,8 @@ FIELD_NAMES = {
 
 NEAR_ME = re.compile(r"\b(near me|nearby|around here|close to me|my location)\b", re.I)
 RESET_WORDS = {"start over", "reset", "new request"}
+# From the search on, free text no longer edits the request (see _on_chat); "start over" still resets.
+LOCKED_STAGES = ("discovering", "picking", "onboarding", "quoting", "choosing", "awaiting_payment", "quote_requested")
 
 
 def new_session() -> dict:
@@ -386,6 +388,17 @@ async def _on_chat(ctx: Context, sender: str, msg: ChatMessage):
         return
     if action in ("pick_quote", "negotiate", "back", "book", "request_quote", "confirm", "cancel") and s.get("quotes"):
         await quote_action(ctx, sender, s, action, sel, text)
+        ctx.storage.set(sender, s)
+        return
+
+    if not action and s.get("stage") in LOCKED_STAGES:
+        # Once caterers are being asked, free text never rewrites the request: ASI:One's assistant comments on our
+        # cards in this same chat ("Good outcome—$500…"), and that must not start a new search. "start over" does.
+        ctx.logger.info(f"[{s['rfq_id']}] free text during {s['stage']} ignored: {text[:60]!r}")
+        if time.time() - s.get("hinted_at", 0) > 60:  # once a minute, so two assistants can't ping-pong
+            s["hinted_at"] = time.time()
+            await ctx.send(sender, text_message("Use the cards above to continue. To change the event details, "
+                                                "say \"start over\"."))
         ctx.storage.set(sender, s)
         return
 
@@ -932,11 +945,15 @@ async def quote_action(ctx: Context, user: str, s: dict, action: str, sel: dict,
 async def send_detail(ctx: Context, user: str, s: dict, vid: str, narration: str = "") -> None:
     q = s["quotes"][vid]
     view = quote_view(s, vid) | {"rows": detail_rows(s, vid)}
+    if not narration and q["status"] == "needs_approval":
+        narration = (f"Still waiting on the owner of {q['vendor_name']}. Tap \"Check for the owner's answer\" "
+                     "again in a moment.")
     narration = narration or f"{q['vendor_name']}: " + (
         ("no public prices yet, but here's their menu." if q.get("menu_preview") else
          "no public menu or prices yet.") + " Tap \"Email them for a quote\" and I'll ask them." if on_request(q) else
         f"{usd(q['total_usd'])} for {s['checklist']['headcount']['value']} guests.")
-    await ctx.send(user, card_message(narration, "detail", quote_detail(s["rfq_id"], view, can_negotiate(q), next_step(q))))
+    await ctx.send(user, card_message(narration, "detail", quote_detail(s["rfq_id"], view, can_negotiate(q), next_step(q),
+                                                                  waiting_owner=q["status"] == "needs_approval")))
 
 
 def next_step(q: dict) -> str:
@@ -1563,7 +1580,8 @@ async def on_counter_result(ctx: Context, sender: str, result: CounterResult):
     ctx.logger.info(f"[{result.rfq_id}] counter {vid}: {before} -> {after} {status} {result.declined_reason}")
 
     if status == "needs_approval":
-        narration = f"{name} is checking with the owner. I'll update you as soon as they answer."
+        narration = (f"{name} is checking with the owner. Tap \"Check for the owner's answer\" in a minute "
+                     "to see what they said.")
     elif was == "needs_approval" and status != "declined":
         narration = (f"The owner of {name} answered: {usd(after)}"
                      + (f" (was {usd(before)})." if after != before else ".")

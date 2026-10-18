@@ -142,12 +142,17 @@ def quotes_carousel(rfq_id: str, title: str, quotes: list[dict]) -> dict:
     }
 
 
-def quote_detail(rfq_id: str, q: dict, can_negotiate: bool, next_step: str = "") -> dict:
+def quote_detail(rfq_id: str, q: dict, can_negotiate: bool, next_step: str = "", waiting_owner: bool = False) -> dict:
     """Detail card for one quote. q: carousel item fields plus "rows": [(label, value)].
 
     next_step: "book" (claimed vendor), "request_quote" (unclaimed estimate) or "" (nothing to do yet).
+    waiting_owner: the owner is deciding; ASI:One doesn't always show a message the agent sends later, so the
+    card gets a button that fetches the answer.
     """
     ctas = []
+    if waiting_owner:
+        ctas.append({"label": "Check for the owner's answer", "primary": True,
+                     "selection": {"action": "pick_quote", "rfq_id": rfq_id, "vendor_id": q["vendor_id"]}})
     if next_step:
         ctas.append({
             "label": "Book" if next_step == "book" else
