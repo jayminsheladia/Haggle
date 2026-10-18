@@ -42,6 +42,39 @@ Haggle is a multi-agent marketplace inside ASI:One. A user describes their event
 - **Sentry:** every agent calls `shared/observability.py` init; every message model carries the `trace` field.
 - **Hosting:** all agents run on one server in mailbox mode (`mailbox=True`, `publish_agent_details=True`), not in the Agentverse hosted editor.
 
+## Using existing Agentverse agents
+
+We may call existing public agents on Agentverse as tools. This fits the "search & discovery" track, but they must never become a single point of failure.
+
+**Allowed uses (tools only):**
+- Location lookup (addresses, "near me")
+- Web search / reading web pages (backup for menu extraction in the Factory)
+- Restaurant / places lookup (second source next to Google Places)
+
+**Never use an external agent for:**
+- Prices, floors, budgets, negotiation or payments
+- Representing a vendor (vendor agents are always ours)
+- The Concierge, Negotiator, Booker or Follow-up logic (core agents are always ours)
+
+**Before adding any external agent, ask first** ("Do you want me to use <agent name> for <job>?") and confirm it:
+- Is active and supports the Chat Protocol
+- Answers correctly in a test from ASI:One
+- Responds in under ~5 seconds
+- Does not charge via the Payment Protocol (or the cost is trivial and approved)
+
+**Every call to an external agent must have:**
+- A timeout (5–10 s)
+- A direct-API fallback (e.g., Google Places if the location agent fails), so the user flow never breaks
+- Its own Sentry span (name the agent), so slow or failed calls show up in traces
+- A log line with the agent's address and outcome (success / timeout / fallback)
+
+**Document every external agent we use** in the README under "External agents" with its name, address, what we use it for, and the fallback. Mention it in the Devpost write-up too.
+
+## Accounts and keys (Photon, Sentry)
+
+- **Photon 2.0 beta:** free, no promo code. One team account at https://app.photon.codes/dashboard (owner: Person B). Keys go in `.env` as `PHOTON_API_KEY` / project ID. During development, only text or call team phones.
+- **Sentry:** one team account at https://sentry.io (owner: Person C). Two projects: Python (agents) and Node (Photon bridge, only if we build it). DSNs go in `.env` as `SENTRY_DSN` / `SENTRY_DSN_BRIDGE`. Sentry must never block a request; if it's down, agents keep running.
+
 ## Conventions
 
 - Python 3.10+, `uagents>=0.25.5`. LLM via OpenAI SDK with `base_url=https://api.asi1.ai/v1`, `model="asi1"`.
