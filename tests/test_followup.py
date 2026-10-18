@@ -51,6 +51,19 @@ class MatchTest(unittest.TestCase):
         self.assertEqual(self.ids("hot", "dropoff", *UCLA, SAT_NOON.replace(hour=18)), [])
         self.assertNotIn("weekday-only", self.ids("hot", "dropoff", *UCLA, SAT_NOON))
 
+    def test_pickup_minimum_weight(self):
+        orgs = [dict(ORGS[2], pickup_min_lbs=50)]
+        self.assertEqual(fr.match(orgs, "hot", "pickup", *UCLA, SAT_NOON, lbs=8), [])
+        self.assertEqual(len(fr.match(orgs, "hot", "pickup", *UCLA, SAT_NOON, lbs=60)), 1)
+        self.assertEqual(len(fr.match(orgs, "hot", "dropoff", *UCLA, SAT_NOON, lbs=8)), 1)
+
+    def test_shipped_orgs_are_complete(self):
+        for o in fr.load_orgs():
+            self.assertTrue({"org_id", "name", "address", "lat", "lng", "hours", "accepts", "source"} <= set(o), o["org_id"])
+            self.assertTrue(set(o["accepts"]) <= {"prepared", "packaged", "produce"}, o["org_id"])
+            for spans in o["hours"].values():
+                self.assertTrue(all(s < e for s, e in spans), o["org_id"])
+
     def test_unknown_food_type_matches_nothing(self):
         self.assertEqual(self.ids("mystery", "dropoff", *UCLA, SAT_NOON), [])
 
@@ -150,7 +163,7 @@ class FlowTest(unittest.TestCase):
         self.assertEqual(form.card_kind, "form")
         self.assertEqual(json.loads(form.card_payload)["submit_cta"]["selection"]["action"], "submit_leftovers")
 
-        at_noon = lambda orgs, food, handoff, lat, lng, now: REAL_MATCH(orgs, food, handoff, lat, lng, SAT_NOON)
+        at_noon = lambda orgs, food, handoff, lat, lng, now, lbs=0: REAL_MATCH(orgs, food, handoff, lat, lng, SAT_NOON, lbs)
         with mock.patch.object(self.fu.food_rescue, "match", at_noon):  # orgs open at the test's fixed time
             self.reply(action="submit_leftovers", rating="5", amount="trays", food_type="hot", kept_safe="yes",
                        handoff="dropoff", contact="team@test")

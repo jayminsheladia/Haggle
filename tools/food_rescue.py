@@ -5,7 +5,8 @@ Everything here is plain code (no LLM): food-type matching, opening hours, dista
 data/food_rescue_orgs.json is a list of:
   {"org_id", "name", "address", "lat", "lng",
    "hours": {"mon": [["09:00", "17:00"]], ...},   # America/Los_Angeles; a missing day = closed
-   "accepts": ["prepared", "packaged", "produce"], "email", "pickup": true|false, "source": "<url>"}
+   "accepts": ["prepared", "packaged", "produce"], "email", "pickup": true|false, "source": "<url>",
+   optional: "pickup_min_lbs" (pickup only above this weight), "phone", "verified", "verify_notes"}
 
 Owner: Person D
 """
@@ -63,11 +64,11 @@ def _ampm(hhmm: str) -> str:
 
 
 def match(orgs: list[dict], food_type: str, handoff: str, lat: float | None, lng: float | None,
-          now: datetime) -> list[dict]:
+          now: datetime, lbs: int = 0) -> list[dict]:
     """Up to MAX_OPTIONS organizations that accept this food, are open now and fit the hand-off, nearest first.
 
-    handoff: "pickup" (the org must offer pickup) or "dropoff". Returns copies with distance_mi (None if
-    the event has no coordinates) and hours_today added.
+    handoff: "pickup" (the org must offer pickup for `lbs`) or "dropoff". Returns copies with distance_mi (None
+    if the event has no coordinates) and hours_today added.
     """
     needs = FOOD_TYPES.get(food_type)
     if not needs:
@@ -76,7 +77,7 @@ def match(orgs: list[dict], food_type: str, handoff: str, lat: float | None, lng
     for o in orgs:
         if needs not in o.get("accepts", []) or not open_now(o, now):
             continue
-        if handoff == "pickup" and not o.get("pickup"):
+        if handoff == "pickup" and (not o.get("pickup") or lbs < o.get("pickup_min_lbs", 0)):
             continue
         d = None
         if lat is not None and lng is not None and o.get("lat") is not None and o.get("lng") is not None:

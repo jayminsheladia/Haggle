@@ -225,14 +225,15 @@ async def on_leftovers(ctx: Context, ev: dict, sel: dict) -> None:
     ev["leftovers"] = {"amount": amount, "food_type": food, "handoff": handoff,
                        "contact": str(sel.get("contact") or "").strip()[:200]}
     now = datetime.now(LA)
+    lbs, meals = food_rescue.impact(amount)
     orgs = food_rescue.load_orgs()
-    options = food_rescue.match(orgs, food, handoff, ev.get("lat"), ev.get("lng"), now)
+    options = food_rescue.match(orgs, food, handoff, ev.get("lat"), ev.get("lng"), now, lbs)
     note = ""
     if not options and handoff == "pickup":
-        options = food_rescue.match(orgs, food, "dropoff", ev.get("lat"), ev.get("lng"), now)
+        options = food_rescue.match(orgs, food, "dropoff", ev.get("lat"), ev.get("lng"), now, lbs)
         if options:
             ev["leftovers"]["handoff"] = "dropoff"
-            note = "Nobody open right now offers pickup, but these take drop-offs. "
+            note = "Nobody open right now can pick up this amount, but these take drop-offs. "
     if not options:
         ev["stage"] = "closed"
         await tell(ctx, ev, thanks + f"I couldn't find a food recovery organization that's open now and takes "
@@ -240,7 +241,6 @@ async def on_leftovers(ctx: Context, ev: dict, sel: dict) -> None:
         ctx.logger.info(f"[{ev['rfq_id']}] no rescue options for {food}/{handoff}")
         return
     ev["stage"], ev["options"] = "options_sent", options
-    lbs, meals = food_rescue.impact(amount)
     await tell(ctx, ev, thanks + note + f"{AMOUNT_LABELS[amount]} of {FOOD_LABELS[food].lower()} could be about "
                                         f"{meals} meals (an estimate). Pick where it should go.",
                "carousel", rescue_carousel(ev["rfq_id"], ev["vendor_id"],
